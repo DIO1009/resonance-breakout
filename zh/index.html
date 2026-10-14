@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>趋势共振策略 · 加密永续趋势突破量化策略</title>
+<meta name="description" content="加密货币永续合约多周期趋势突破量化交易策略的技术说明：高周期通道定方向、低周期轨道突破、回踩确认入场、多维信号质量评分、风险预算定仓位。含 380 天归一化回测业绩与利润集中度披露。不构成投资建议。">
+<meta name="keywords" content="加密货币量化,永续合约,量化交易,趋势跟踪,突破策略,多周期共振,回测,风险管理,仓位管理,cryptocurrency trading,crypto perpetual futures,algorithmic trading,quantitative trading,systematic trading,trend following,breakout strategy,multi-timeframe,backtesting,risk management,position sizing">
+<link rel="canonical" href="https://dio1009.github.io/resonance-breakout/zh/">
+<link rel="alternate" hreflang="en" href="https://dio1009.github.io/resonance-breakout/">
+<link rel="alternate" hreflang="zh-CN" href="https://dio1009.github.io/resonance-breakout/zh/">
+<link rel="alternate" hreflang="x-default" href="https://dio1009.github.io/resonance-breakout/">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Trend Resonance">
+<meta property="og:title" content="趋势共振策略 · 加密永续趋势突破量化策略">
+<meta property="og:description" content="加密货币永续合约多周期趋势突破量化交易策略的技术说明：高周期通道定方向、低周期轨道突破、回踩确认入场、多维信号质量评分、风险预算定仓位。含 380 天归一化回测业绩与利润集中度披露。不构成投资建议。">
+<meta property="og:url" content="https://dio1009.github.io/resonance-breakout/zh/">
+<meta property="og:locale" content="zh_CN">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="趋势共振策略 · 加密永续趋势突破量化策略">
+<meta name="twitter:description" content="Technical writeup of a multi-timeframe trend-following breakout strategy for cryptocurrency perpetual futures: higher-timeframe regime filter, session-rail breakout trigger, pullback-confirmed entries, multi-factor signal quality scoring and risk-budget position sizing. Includes 380-day normalized backtest results and profit concentration disclosure. Not investment advice.">
+<style>
+/* Artifact 平台骨架在此环境下不存在，补齐它提供的那几条 */
+:root{color-scheme:light; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+[hidden]{display:none!important}
+.lang{font-family:var(--f-mono); font-size:.78rem; color:var(--fg-dim); text-decoration:none;
+  border:1px solid var(--line); border-radius:6px; padding:5px 9px; white-space:nowrap}
+.lang:hover{color:var(--amber); border-color:var(--amber)}
+</style>
+
+<style>
+/* 布局：单列全幅暗色章节 + 吸顶导航；英雄区 canvas 画归一化资金曲线，其余为数据与说明板块 */
+:root{
+  --ink:#0a0e17; --ink-2:#111827; --panel:#131a28; --line:#1f2a3d;
+  --fg:#e8edf7; --fg-dim:#93a1bd; --fg-faint:#5d6b86;
+  --amber:#ffb020; --amber-soft:#ffd27a; --teal:#35d0ba; --coral:#ff6b5e;
+  --grid:rgba(147,161,189,.09);
+  --f-display:'Archivo',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;
+  --f-body:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --ink:#f6f7fa; --ink-2:#eef1f6; --panel:#ffffff; --line:#dde3ec;
+  --fg:#101827; --fg-dim:#4d5a73; --fg-faint:#7d8aa3;
+  --amber:#b96d00; --amber-soft:#d89a2e; --teal:#0f8e7c; --coral:#d2402f;
+  --grid:rgba(16,24,39,.08); color-scheme:light;
+}
+@media (prefers-color-scheme:light){
+  :root:not([data-theme="dark"]){
+    --ink:#f6f7fa; --ink-2:#eef1f6; --panel:#ffffff; --line:#dde3ec;
+    --fg:#101827; --fg-dim:#4d5a73; --fg-faint:#7d8aa3;
+    --amber:#b96d00; --amber-soft:#d89a2e; --teal:#0f8e7c; --coral:#d2402f;
+    --grid:rgba(16,24,39,.08); color-scheme:light;
+  }
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ink); color:var(--fg);
+  font-family:var(--f-body); font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:48px 48px,48px 48px;
+}
+.wrap{max-width:1140px; margin:0 auto; padding-inline:20px}
+h1,h2,h3{font-family:var(--f-display); font-weight:800; letter-spacing:-.02em; text-wrap:balance; margin:0}
+.mono{font-family:var(--f-mono); font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--f-mono); font-size:.72rem; letter-spacing:.18em; text-transform:uppercase; color:var(--amber); margin:0 0 10px}
+
+nav{position:sticky; top:env(safe-area-inset-top,0px); z-index:50;
+  background:color-mix(in srgb,var(--ink) 88%,transparent); backdrop-filter:blur(12px); border-bottom:1px solid var(--line)}
+.navin{max-width:1140px; margin:0 auto; padding:12px 20px; display:flex; align-items:center; gap:18px; flex-wrap:wrap}
+.brand{font-family:var(--f-display); font-weight:900; font-size:1.05rem; letter-spacing:-.03em; display:flex; align-items:center; gap:9px}
+.dot{width:8px; height:8px; border-radius:50%; background:var(--teal); box-shadow:0 0 0 3px color-mix(in srgb,var(--teal) 22%,transparent)}
+@media (prefers-reduced-motion:no-preference){ .dot{animation:pulse 2.6s ease-in-out infinite} }
+@keyframes pulse{0%,100%{box-shadow:0 0 0 3px color-mix(in srgb,var(--teal) 22%,transparent)}50%{box-shadow:0 0 0 8px color-mix(in srgb,var(--teal) 0%,transparent)}}
+nav a{color:var(--fg-dim); text-decoration:none; font-size:.86rem; font-family:var(--f-mono)}
+nav a:hover{color:var(--amber)}
+nav .sp{margin-left:auto}
+#themeBtn{font-family:var(--f-mono); font-size:.78rem; background:transparent; color:var(--fg-dim);
+  border:1px solid var(--line); border-radius:6px; padding:5px 10px; cursor:pointer}
+#themeBtn:hover{color:var(--amber); border-color:var(--amber)}
+:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+
+.tape{border-bottom:1px solid var(--line); background:var(--ink-2); overflow:hidden; padding:7px 0}
+.tapetrack{display:flex; gap:30px; white-space:nowrap; font-family:var(--f-mono); font-size:.74rem; color:var(--fg-faint); width:max-content}
+@media (prefers-reduced-motion:no-preference){ .tapetrack{animation:slide 46s linear infinite} }
+@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.tape b{color:var(--amber); font-weight:500}
+
+header{padding-block:56px 28px}
+h1{font-size:clamp(2.3rem,6.4vw,4.3rem); line-height:.98}
+h1 em{font-style:normal; color:var(--amber); display:block}
+.lede{color:var(--fg-dim); font-size:clamp(1rem,1.9vw,1.18rem); max-width:62ch; margin:20px 0 0}
+.heroGrid{display:grid; grid-template-columns:1fr; gap:22px; margin-top:34px}
+@media(min-width:880px){ .heroGrid{grid-template-columns:1.45fr 1fr; align-items:end} }
+.chartCard{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; min-width:0}
+.chartHd{display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:8px}
+.chartHd h3{font-size:.95rem}
+.chartHd span{font-family:var(--f-mono); font-size:.72rem; color:var(--fg-faint)}
+canvas{display:block; width:100%; height:auto; max-width:100%}
+.twin{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+@media(max-width:520px){ .twin{grid-template-columns:1fr} }
+.big{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; position:relative; overflow:hidden}
+.big.hi{border-color:color-mix(in srgb,var(--amber) 42%,var(--line))}
+.big.hi::after{content:""; position:absolute; inset:-60% -30% auto auto; width:190px; height:190px; border-radius:50%;
+  background:radial-gradient(circle,color-mix(in srgb,var(--amber) 26%,transparent),transparent 70%); pointer-events:none}
+.big .k{font-family:var(--f-mono); font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--fg-faint)}
+.big .v{font-family:var(--f-display); font-weight:900; font-size:clamp(1.6rem,4.4vw,2.4rem); line-height:1.1; letter-spacing:-.03em; margin-top:6px}
+.big .v.pos{color:var(--amber)} .big .v.neg{color:var(--coral)}
+.big .s{font-family:var(--f-mono); font-size:.74rem; color:var(--fg-dim); margin-top:6px}
+
+section{padding-block:52px; border-top:1px solid var(--line)}
+section h2{font-size:clamp(1.5rem,3.4vw,2.1rem); margin-bottom:10px}
+.sub{color:var(--fg-dim); max-width:66ch; margin:0 0 26px}
+.cards{display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(248px,1fr))}
+.card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0}
+.card h3{font-size:1rem; margin-bottom:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.card p{margin:0; color:var(--fg-dim); font-size:.92rem}
+.tag{font-family:var(--f-mono); font-size:.64rem; letter-spacing:.1em; text-transform:uppercase;
+  border:1px solid var(--line); border-radius:999px; padding:2px 8px; color:var(--fg-faint)}
+
+.pipe{display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.step{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; min-width:0}
+.step .n{font-family:var(--f-mono); font-size:.68rem; color:var(--amber); letter-spacing:.12em}
+.step h4{font-family:var(--f-display); font-weight:800; font-size:1rem; margin:5px 0 7px}
+.step p{margin:0; font-size:.87rem; color:var(--fg-dim)}
+
+.tbl{overflow-x:auto; border:1px solid var(--line); border-radius:12px; background:var(--panel)}
+table{border-collapse:collapse; width:100%; min-width:460px}
+th,td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); font-size:.88rem}
+th{font-family:var(--f-mono); font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; color:var(--fg-faint); font-weight:500}
+tr:last-child td{border-bottom:none}
+td.num{font-family:var(--f-mono); font-variant-numeric:tabular-nums; text-align:right}
+td.pos{color:var(--teal)} td.neg{color:var(--coral)}
+
+.bars{display:grid; gap:7px}
+.bar{display:grid; grid-template-columns:62px 1fr 74px; align-items:center; gap:10px; font-family:var(--f-mono); font-size:.8rem}
+.bar .lbl{color:var(--fg-dim)}
+.bar .track{height:20px; background:color-mix(in srgb,var(--fg-faint) 11%,transparent); border-radius:4px; position:relative; overflow:hidden; min-width:0}
+.bar .fill{height:100%; border-radius:4px; background:linear-gradient(90deg,color-mix(in srgb,var(--amber) 55%,transparent),var(--amber))}
+.bar .fill.neg{background:linear-gradient(90deg,color-mix(in srgb,var(--coral) 45%,transparent),var(--coral))}
+.bar .val{text-align:right; color:var(--fg)}
+@media (prefers-reduced-motion:no-preference){ .bar .fill{animation:grow .9s cubic-bezier(.2,.8,.2,1) both} }
+@keyframes grow{from{transform:scaleX(.04); transform-origin:left}to{transform:scaleX(1); transform-origin:left}}
+
+.note{border-left:3px solid var(--amber); background:color-mix(in srgb,var(--amber) 7%,var(--panel));
+  border-radius:0 10px 10px 0; padding:16px 18px; margin-top:20px}
+.note.warn{border-left-color:var(--coral); background:color-mix(in srgb,var(--coral) 7%,var(--panel))}
+.note.quiet{border-left-color:var(--fg-faint); background:var(--panel)}
+.note h3{font-size:.98rem; margin-bottom:6px}
+.note p{margin:0; color:var(--fg-dim); font-size:.9rem}
+.note p+p{margin-top:8px}
+
+footer{border-top:1px solid var(--line); padding-block:34px 44px; color:var(--fg-faint); font-size:.82rem}
+footer p{max-width:78ch; margin:0 0 10px}
+footer strong{color:var(--fg-dim)}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+</head>
+<body>
+<nav>
+  <div class="navin">
+    <div class="brand"><span class="dot" aria-hidden="true"></span>趋势共振</div>
+    <a href="#how">方法</a>
+    <a href="#eng">工程</a>
+    <a href="#result">回测结果</a>
+    <span class="sp"></span>
+    <a class="lang" href="../" hreflang="en" lang="en">English</a>
+    <button id="themeBtn" type="button">切换主题</button>
+  </div>
+</nav>
+
+<div class="tape"><div class="tapetrack" id="tape" aria-hidden="true"></div></div>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">USDT 永续合约 · 多周期共振 · 全自动执行</p>
+    <h1>用高周期的方向<em>约束低周期的扳机</em></h1>
+    <p class="lede">一套只做多头的加密永续趋势突破系统。高周期通道先判定市场处于趋势还是震荡，只有方向明确时才允许低周期的突破信号生效；入场前再要求价格回踩确认，避免在冲高末端追入。每一根 K 线的决策，包括被拒绝的，都写进数据库，可逐笔复盘。</p>
+
+    <div class="heroGrid">
+      <div class="chartCard">
+        <div class="chartHd">
+          <h3>回测资金曲线（起点 = 100）</h3>
+          <span id="eqMeta" class="mono"></span>
+        </div>
+        <canvas id="eq" width="900" height="330" role="img" aria-label="回测资金曲线，归一化起点 100，峰值 387，期末 358"></canvas>
+      </div>
+      <div class="twin">
+        <div class="big hi"><div class="k">回测总收益 · 380 天</div><div class="v pos">+250.89%</div><div class="s">年化 233.9%</div></div>
+        <div class="big"><div class="k">回测最大回撤</div><div class="v">36.44%</div><div class="s">峰谷缩水逾三分之一</div></div>
+        <div class="big"><div class="k">回测交易笔数</div><div class="v">396</div><div class="s">胜率 44.44%</div></div>
+        <div class="big"><div class="k">盈亏比 / 利润因子</div><div class="v">1.92</div><div class="s">利润因子 1.54</div></div>
+      </div>
+    </div>
+
+    <div class="note warn">
+      <h3>本页数值均来自回测</h3>
+      <p><strong>以下所有收益、回撤与胜率都是 380 天历史数据回放的结果，不是已实现的账户业绩。</strong>回测已计入手续费、资金费与止损滑点，止损按 K 线最高最低价触发，与实盘执行方式一致；但它无法复现真实成交的流动性、延迟与极端行情下的滑点。参数在历史数据上经过多轮筛选，存在过度拟合的可能。</p>
+    </div>
+  </header>
+</div>
+
+<div class="wrap">
+<section id="how">
+  <p class="eyebrow">方法</p>
+  <h2>六道门，每道都会拒单</h2>
+  <p class="sub">信号必须依次通过市场状态、突破扳机、入场时机、信号质量、事件回避与资金约束六层判定。任一层不过，就只留下一条带原因的决策记录，不开仓。横盘期因此会长时间空仓。</p>
+  <div class="pipe">
+    <div class="step"><div class="n">01 / 市场状态</div><h4>高周期通道定方向</h4><p>用高周期的突破通道与波动率通道共同判定当前是趋势还是震荡。判为震荡时，低周期的任何突破信号都被直接否决。</p></div>
+    <div class="step"><div class="n">02 / 扳机</div><h4>时段轨道突破</h4><p>每个交易时段开盘后，由历史波幅推出一组当日固定的买卖轨道。价格收于轨道之外才算有效突破，盘中穿越不算。</p></div>
+    <div class="step"><div class="n">03 / 入场时机</div><h4>回踩确认</h4><p>突破成立后不立即追入，要求价格回落到短周期均线附近的容许带内才下单。带外的突破会被放弃，而不是以更差的价格成交。</p></div>
+    <div class="step"><div class="n">04 / 值不值得下注</div><h4>多维质量评分</h4><p>把趋势确信度、突破深度、回踩精度与量能扩张合成一个 0–1 的质量分，低于门槛不开仓。分数与各分量都随决策一并落库。</p></div>
+    <div class="step"><div class="n">05 / 事件回避</div><h4>宏观窗口屏蔽</h4><p>美联储议息等高影响事件公布前的固定窗口内，既不开新仓也不加仓。内置日历，临近用尽会自动告警。</p></div>
+    <div class="step"><div class="n">06 / 下多少</div><h4>风险预算定仓位</h4><p>先定止损位置，再由「本笔愿意承担的风险」反推张数，而不是先定张数。单笔风险、单仓风险、单标的保证金占比与总敞口四重上限依次裁剪。</p></div>
+  </div>
+</section>
+
+<section id="eng">
+  <p class="eyebrow">工程</p>
+  <h2>策略只是一半，另一半是它能不能一直活着</h2>
+  <p class="sub">实盘与回测共用同一套引擎代码，同一份配置既能回放历史也能驱动实盘，因此回测结论可以逐根 K 线对齐验证。</p>
+  <div class="cards">
+    <div class="card"><h3>全量决策审计 <span class="tag">可复盘</span></h3><p>不只记录成交。每根 K 线、每个标的都写一条决策记录，含质量分各分量与被拒绝的原因。任何一次「为什么没开仓」都能回答到具体那一层。</p></div>
+    <div class="card"><h3>行情容错 <span class="tag">自愈</span></h3><p>行情通道断线自动重连并补齐缺失的 K 线；持续中断超过阈值触发熔断停止开仓；短暂抖动做去抖处理，不产生噪声告警。</p></div>
+    <div class="card"><h3>账本对账 <span class="tag">每 15 秒</span></h3><p>空仓时持续比对账面权益与交易所实际余额，不一致立即告警。漏记成交、手续费或资金费会在一分钟内被发现，而不是月底对账时。</p></div>
+    <div class="card"><h3>止损在交易所侧 <span class="tag">不依赖程序</span></h3><p>初始止损以委托形式挂在交易所，程序崩溃、断网或重启都不影响它生效。重启后自动接管既有持仓，不重复下单。</p></div>
+    <div class="card"><h3>资金上限硬约束 <span class="tag">多重</span></h3><p>单笔风险、单仓风险、单标的保证金占比、总敞口四层上限在下单前裁剪张数。触顶时记录被裁剪的原因，而非静默缩单。</p></div>
+    <div class="card"><h3>参数变更留痕 <span class="tag">可追溯</span></h3><p>每次配置调整都带证据记录：改前改后的回测对比、样本窗口与判定依据，一并进版本库。没有「凭感觉调一下」。</p></div>
+  </div>
+</section>
+
+<section id="result">
+  <p class="eyebrow">回测结果</p>
+  <h2>380 天 · 396 笔</h2>
+  <p class="sub">手续费、资金费与止损滑点全部计入；止损按 K 线最高最低价触发，与实盘执行方式一致。下列数值均已归一化，不含账户规模信息。</p>
+  <div class="cards">
+    <div class="card"><h3>月度收益</h3><p style="margin-bottom:12px">占期初本金百分比，按成交净利汇总、资金费前口径，合计 257.96%；扣除整段资金费后即总收益 250.89%。两个月贡献了全部利润的七成。</p><div class="bars" id="moBars"></div></div>
+    <div class="card"><h3>利润来源集中度</h3><p style="margin-bottom:12px">各标的占总利润比例，按贡献排序、已匿名，合计 100%。</p><div class="bars" id="anonBars"></div></div>
+  </div>
+  <div class="note">
+    <h3>利润高度集中，这是最该知道的一件事</h3>
+    <p><strong>最好的两个月合计占全部利润的 70.3%，其余 12 个月里有 4 个月为负。</strong>按标的看是同一形态：贡献最大的单一标的占总利润的 34.6%，排名末位的两个为负。</p>
+    <p>这说明收益来自少数强趋势行情，而不是稳定的每日积累。横盘期会长时间不开仓——实盘曾连续六天没有任何入场。任何把年化收益线性外推到月度或周度的算法都是错的。</p>
+  </div>
+  <div class="tbl" style="margin-top:20px"><table>
+    <thead><tr><th>指标</th><th class="num">数值</th><th>指标</th><th class="num">数值</th></tr></thead>
+    <tbody>
+      <tr><td>样本长度</td><td class="num">380 天</td><td>交易笔数</td><td class="num">396</td></tr>
+      <tr><td>总收益</td><td class="num pos">+250.89%</td><td>胜率</td><td class="num">44.44%</td></tr>
+      <tr><td>年化</td><td class="num pos">233.9%</td><td>盈亏比</td><td class="num">1.92</td></tr>
+      <tr><td>最大回撤</td><td class="num">36.44%</td><td>利润因子</td><td class="num">1.54</td></tr>
+      <tr><td>止损了结</td><td class="num">23 笔 / 5.8%</td><td>其余出场</td><td class="num">373 笔</td></tr>
+    </tbody>
+  </table></div>
+</section>
+</div>
+
+<div class="wrap"><footer>
+  <p><strong>风险声明。</strong>本页面为技术说明，不构成投资建议、要约或收益承诺。加密货币永续合约为高杠杆衍生品，价格波动剧烈，可能在短时间内损失全部本金。本系统使用杠杆交易，回测最大回撤 36.44%，意味着在同等行情下账户可能出现超过三分之一的缩水。</p>
+  <p><strong>关于回测。</strong>回测结果基于历史数据，已计入手续费、资金费与止损滑点，但无法完全复现真实成交的流动性、延迟与极端行情下的滑点。历史表现不代表未来收益。参数在历史数据上经过多轮筛选，存在过度拟合的可能。</p>
+  <p><strong>关于本页数据来源。</strong>本页展示的全部业绩指标均由历史数据回放产生，并非已实现的账户收益。该系统已在真实账户运行，但实盘累计成交笔数尚不足以支撑统计结论，故不在此发布实盘业绩数字。</p>
+  <p style="margin-top:18px; color:var(--fg-faint)">数据截至 2026-10-14 · 回测窗口 2025-09-29 ~ 2026-10-12 · 回测与实盘为同一套引擎 · 图表数值已归一化</p>
+</footer></div>
+
+<script>
+const IDX = [["2025-09-29",97.82],["2025-09-30",96.42],["2025-10-02",109.38],["2025-10-03",112.21],["2025-10-04",110.75],["2025-10-05",108.12],["2025-10-07",103.28],["2025-10-15",101.69],["2025-10-20",100.75],["2025-10-21",98.61],["2025-10-26",99.15],["2025-10-27",98.17],["2025-11-01",100.47],["2025-11-07",107.81],["2025-11-10",109.12],["2025-11-11",107.58],["2025-11-25",105.11],["2025-11-26",103.15],["2025-11-27",104.84],["2025-11-28",102.34],["2025-12-03",102.33],["2025-12-04",101.06],["2025-12-08",99.21],["2025-12-23",97.35],["2025-12-28",96.35],["2025-12-29",85.19],["2026-01-02",101.89],["2026-01-03",109.8],["2026-01-06",118.78],["2026-01-07",114.87],["2026-01-12",112.49],["2026-01-13",115.06],["2026-01-14",116.47],["2026-01-15",114.41],["2026-02-14",124.08],["2026-02-15",126.65],["2026-02-17",128.77],["2026-02-19",124.41],["2026-02-21",122.15],["2026-02-26",117.31],["2026-03-05",147.53],["2026-03-09",145.53],["2026-03-10",150.03],["2026-03-11",140.88],["2026-03-12",145.71],["2026-03-13",149.38],["2026-03-14",145.07],["2026-03-17",145.24],["2026-03-20",138.87],["2026-03-24",143.24],["2026-03-25",147.6],["2026-03-26",137.82],["2026-03-27",133.17],["2026-04-01",136.96],["2026-04-02",130.87],["2026-04-06",123.31],["2026-04-07",121.32],["2026-04-08",112.34],["2026-04-09",110.17],["2026-04-10",113.5],["2026-04-11",115.24],["2026-04-12",111.38],["2026-04-14",107.23],["2026-04-15",109.64],["2026-04-16",124.05],["2026-04-17",126.94],["2026-04-18",120.1],["2026-04-22",117.74],["2026-04-25",119.94],["2026-04-26",123.88],["2026-04-27",121.98],["2026-05-02",125.84],["2026-05-03",125.96],["2026-05-04",124.68],["2026-05-05",126.93],["2026-05-06",141.59],["2026-05-07",142.6],["2026-05-08",154.88],["2026-05-09",155.2],["2026-05-10",149.92],["2026-05-11",149.58],["2026-05-13",159.2],["2026-05-15",155.41],["2026-05-19",151.0],["2026-05-20",160.12],["2026-05-21",155.9],["2026-05-22",145.54],["2026-05-28",141.77],["2026-05-29",144.84],["2026-05-30",143.16],["2026-06-01",145.19],["2026-06-02",141.24],["2026-06-04",139.56],["2026-06-14",139.55],["2026-06-15",162.48],["2026-06-16",160.01],["2026-06-26",162.73],["2026-06-27",159.13],["2026-06-28",156.23],["2026-07-02",169.22],["2026-07-03",173.3],["2026-07-04",180.07],["2026-07-05",178.98],["2026-07-09",185.31],["2026-07-15",207.04],["2026-07-16",202.76],["2026-07-21",208.18],["2026-07-22",210.08],["2026-07-27",197.71],["2026-07-31",189.56],["2026-08-03",186.57],["2026-08-04",186.7],["2026-08-05",183.53],["2026-08-07",180.93],["2026-08-08",197.76],["2026-08-09",203.81],["2026-08-10",204.18],["2026-08-12",202.37],["2026-08-13",208.61],["2026-08-15",228.21],["2026-08-17",219.86],["2026-08-19",264.7],["2026-08-20",301.04],["2026-08-21",326.76],["2026-08-22",319.82],["2026-08-25",314.25],["2026-08-27",310.97],["2026-08-28",308.25],["2026-09-04",295.29],["2026-09-05",290.44],["2026-09-06",316.03],["2026-09-07",309.66],["2026-09-09",304.15],["2026-09-12",297.71],["2026-09-18",346.35],["2026-09-19",376.31],["2026-09-20",378.07],["2026-09-22",371.66],["2026-09-23",375.77],["2026-09-25",379.33],["2026-09-26",387.41],["2026-09-27",371.0],["2026-10-04",367.44],["2026-10-05",363.03],["2026-10-06",371.54],["2026-10-08",368.13],["2026-10-12",357.96]], MO = [["2025-09",-3.58],["2025-10",1.75],["2025-11",4.17],["2025-12",-17.15],["2026-01",29.22],["2026-02",2.9],["2026-03",15.87],["2026-04",-11.2],["2026-05",21.18],["2026-06",13.07],["2026-07",33.32],["2026-08",118.7],["2026-09",62.75],["2026-10",-13.04]], ANON = [["\u6807\u7684 A",34.6],["\u6807\u7684 B",13.6],["\u6807\u7684 C",11.4],["\u6807\u7684 D",10.9],["\u6807\u7684 E",10.7],["\u6807\u7684 F",9.1],["\u6807\u7684 G",6.2],["\u6807\u7684 H",3.7],["\u6807\u7684 I",2.6],["\u6807\u7684 J",1.6],["\u6807\u7684 K",1.1],["\u6807\u7684 L",1.0],["\u6807\u7684 M",0.5],["\u6807\u7684 N",-0.9],["\u6807\u7684 O",-6.3]];
+
+(function(){
+  const items = [
+    ['回测样本','380 天 / 396 笔'],['总收益','+250.89%'],['年化','233.9%'],
+    ['最大回撤','36.44%'],['胜率','44.44%'],['盈亏比','1.92'],['利润因子','1.54'],
+    ['利润集中度','最好两月占 70%'],['方向','仅做多']
+  ];
+  const one = items.map(i=>`<span>${i[0]} <b>${i[1]}</b></span>`).join('');
+  document.getElementById('tape').innerHTML = one + one;
+})();
+
+(function(){
+  const btn = document.getElementById('themeBtn'), root = document.documentElement;
+  try{ const s = localStorage.getItem('tc-theme'); if(s) root.setAttribute('data-theme', s); }catch(e){}
+  btn.addEventListener('click', ()=>{
+    const cur = root.getAttribute('data-theme');
+    const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const next = cur ? (cur === 'dark' ? 'light' : 'dark') : (sysDark ? 'light' : 'dark');
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('tc-theme', next); }catch(e){}
+    drawEq();
+  });
+})();
+
+function hexA(hex,a){
+  const h = hex.replace('#','');
+  const n = h.length===3 ? h.split('').map(c=>c+c).join('') : h;
+  return `rgba(${parseInt(n.slice(0,2),16)},${parseInt(n.slice(2,4),16)},${parseInt(n.slice(4,6),16)},${a})`;
+}
+
+function drawEq(){
+  const c = document.getElementById('eq'); if(!c) return;
+  const cs = getComputedStyle(document.documentElement);
+  const amber = cs.getPropertyValue('--amber').trim() || '#ffb020';
+  const dim   = cs.getPropertyValue('--fg-faint').trim() || '#5d6b86';
+  const line  = cs.getPropertyValue('--line').trim() || '#1f2a3d';
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const cssW = c.clientWidth || 900, cssH = Math.round(cssW * 0.37);
+  c.width = Math.round(cssW*dpr); c.height = Math.round(cssH*dpr); c.style.height = cssH+'px';
+  const g = c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,cssW,cssH);
+
+  const padL = 46, padR = 12, padT = 14, padB = 26;
+  const W = cssW-padL-padR, H = cssH-padT-padB;
+  const vals = IDX.map(d=>d[1]);
+  const dMin = Math.min(...vals), dMax = Math.max(...vals);
+  const lo = dMin*0.95, hi = dMax*1.04;
+  const x = i => padL + (i/(IDX.length-1))*W;
+  const y = v => padT + (1-(v-lo)/(hi-lo))*H;
+
+  g.font = '11px ui-monospace, Menlo, monospace'; g.textBaseline = 'middle';
+  const step = 100;
+  for(let v = Math.ceil(dMin/step)*step; v <= dMax; v += step){
+    g.strokeStyle = line; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(padL, y(v)); g.lineTo(cssW-padR, y(v)); g.stroke();
+    g.fillStyle = dim; g.textAlign = 'right'; g.fillText(String(v), padL-8, y(v));
+  }
+
+  g.textAlign='center'; g.textBaseline='top';
+  let lastMo='';
+  IDX.forEach((d,i)=>{
+    const mo = d[0].slice(0,7);
+    if(mo!==lastMo && i>2 && i<IDX.length-2){
+      lastMo = mo;
+      if(Number(mo.slice(5,7))%3===1){ g.fillStyle=dim; g.fillText(mo.slice(2).replace('-','/'), x(i), cssH-padB+6); }
+    }
+  });
+
+  const grad = g.createLinearGradient(0,padT,0,padT+H);
+  grad.addColorStop(0, hexA(amber,.34)); grad.addColorStop(1, hexA(amber,0));
+  g.beginPath(); g.moveTo(x(0), y(vals[0]));
+  IDX.forEach((d,i)=> g.lineTo(x(i), y(d[1])));
+  g.lineTo(x(IDX.length-1), padT+H); g.lineTo(x(0), padT+H); g.closePath();
+  g.fillStyle = grad; g.fill();
+
+  g.beginPath(); g.moveTo(x(0), y(vals[0]));
+  IDX.forEach((d,i)=> g.lineTo(x(i), y(d[1])));
+  g.strokeStyle = amber; g.lineWidth = 2; g.lineJoin='round';
+  g.shadowColor = hexA(amber,.55); g.shadowBlur = 10; g.stroke(); g.shadowBlur = 0;
+
+  g.setLineDash([4,4]); g.strokeStyle = dim; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(padL, y(100)); g.lineTo(cssW-padR, y(100)); g.stroke();
+  g.setLineDash([]);
+  g.fillStyle = dim; g.textAlign='left'; g.textBaseline='bottom';
+  g.fillText('起点 100', padL+4, y(100)-3);
+
+  const lx = x(IDX.length-1), ly = y(vals[vals.length-1]);
+  g.beginPath(); g.arc(lx,ly,4,0,Math.PI*2); g.fillStyle=amber; g.fill();
+  g.beginPath(); g.arc(lx,ly,8,0,Math.PI*2); g.strokeStyle=hexA(amber,.4); g.lineWidth=2; g.stroke();
+}
+drawEq();
+let rt; window.addEventListener('resize', ()=>{ clearTimeout(rt); rt=setTimeout(drawEq,160); });
+document.getElementById('eqMeta').textContent =
+  IDX[0][0] + ' → ' + IDX[IDX.length-1][0] + '  ·  100 → ' + IDX[IDX.length-1][1].toFixed(0);
+
+function bars(el, rows, suffix){
+  const max = Math.max(...rows.map(r=>Math.abs(r[1])));
+  el.innerHTML = rows.map(r=>{
+    const w = Math.max(1.5, Math.abs(r[1])/max*100), neg = r[1] < 0;
+    return `<div class="bar"><span class="lbl">${r[0]}</span>`
+      + `<span class="track"><span class="fill${neg?' neg':''}" style="width:${w}%"></span></span>`
+      + `<span class="val">${r[1]>=0?'+':''}${r[1].toFixed(1)}${suffix}</span></div>`;
+  }).join('');
+}
+bars(document.getElementById('moBars'), MO.map(m=>[m[0].slice(2), m[1]]), '%');
+bars(document.getElementById('anonBars'), ANON.map(a=>[a[0].replace('标的 ',''), a[1]]), '%');
+</script>
+
+</body>
+</html>

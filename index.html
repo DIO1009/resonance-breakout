@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trend Resonance — Crypto Perpetual Futures Trend-Following Strategy</title>
+<meta name="description" content="Technical writeup of a multi-timeframe trend-following breakout strategy for cryptocurrency perpetual futures: higher-timeframe regime filter, session-rail breakout trigger, pullback-confirmed entries, multi-factor signal quality scoring and risk-budget position sizing. Includes 380-day normalized backtest results and profit concentration disclosure. Not investment advice.">
+<meta name="keywords" content="cryptocurrency trading,crypto perpetual futures,algorithmic trading,quantitative trading,systematic trading,trading strategy,trading bot,trend following,breakout strategy,multi-timeframe analysis,backtesting,risk management,position sizing,technical analysis,quantitative finance,crypto quant,futures trading,加密货币量化,永续合约,量化交易">
+<link rel="canonical" href="https://dio1009.github.io/resonance-breakout/">
+<link rel="alternate" hreflang="en" href="https://dio1009.github.io/resonance-breakout/">
+<link rel="alternate" hreflang="zh-CN" href="https://dio1009.github.io/resonance-breakout/zh/">
+<link rel="alternate" hreflang="x-default" href="https://dio1009.github.io/resonance-breakout/">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Trend Resonance">
+<meta property="og:title" content="Trend Resonance — Crypto Perpetual Futures Trend-Following Strategy">
+<meta property="og:description" content="Technical writeup of a multi-timeframe trend-following breakout strategy for cryptocurrency perpetual futures: higher-timeframe regime filter, session-rail breakout trigger, pullback-confirmed entries, multi-factor signal quality scoring and risk-budget position sizing. Includes 380-day normalized backtest results and profit concentration disclosure. Not investment advice.">
+<meta property="og:url" content="https://dio1009.github.io/resonance-breakout/">
+<meta property="og:locale" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Trend Resonance — Crypto Perpetual Futures Trend-Following Strategy">
+<meta name="twitter:description" content="Technical writeup of a multi-timeframe trend-following breakout strategy for cryptocurrency perpetual futures: higher-timeframe regime filter, session-rail breakout trigger, pullback-confirmed entries, multi-factor signal quality scoring and risk-budget position sizing. Includes 380-day normalized backtest results and profit concentration disclosure. Not investment advice.">
+<style>
+/* Artifact 平台骨架在此环境下不存在，补齐它提供的那几条 */
+:root{color-scheme:light; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+[hidden]{display:none!important}
+.lang{font-family:var(--f-mono); font-size:.78rem; color:var(--fg-dim); text-decoration:none;
+  border:1px solid var(--line); border-radius:6px; padding:5px 9px; white-space:nowrap}
+.lang:hover{color:var(--amber); border-color:var(--amber)}
+</style>
+
+<style>
+/* 布局：单列全幅暗色章节 + 吸顶导航；英雄区 canvas 画归一化资金曲线，其余为数据与说明板块 */
+:root{
+  --ink:#0a0e17; --ink-2:#111827; --panel:#131a28; --line:#1f2a3d;
+  --fg:#e8edf7; --fg-dim:#93a1bd; --fg-faint:#5d6b86;
+  --amber:#ffb020; --amber-soft:#ffd27a; --teal:#35d0ba; --coral:#ff6b5e;
+  --grid:rgba(147,161,189,.09);
+  --f-display:'Archivo',-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;
+  --f-body:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --ink:#f6f7fa; --ink-2:#eef1f6; --panel:#ffffff; --line:#dde3ec;
+  --fg:#101827; --fg-dim:#4d5a73; --fg-faint:#7d8aa3;
+  --amber:#b96d00; --amber-soft:#d89a2e; --teal:#0f8e7c; --coral:#d2402f;
+  --grid:rgba(16,24,39,.08); color-scheme:light;
+}
+@media (prefers-color-scheme:light){
+  :root:not([data-theme="dark"]){
+    --ink:#f6f7fa; --ink-2:#eef1f6; --panel:#ffffff; --line:#dde3ec;
+    --fg:#101827; --fg-dim:#4d5a73; --fg-faint:#7d8aa3;
+    --amber:#b96d00; --amber-soft:#d89a2e; --teal:#0f8e7c; --coral:#d2402f;
+    --grid:rgba(16,24,39,.08); color-scheme:light;
+  }
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ink); color:var(--fg);
+  font-family:var(--f-body); font-size:16px; line-height:1.65; -webkit-font-smoothing:antialiased;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:48px 48px,48px 48px;
+}
+.wrap{max-width:1140px; margin:0 auto; padding-inline:20px}
+h1,h2,h3{font-family:var(--f-display); font-weight:800; letter-spacing:-.02em; text-wrap:balance; margin:0}
+.mono{font-family:var(--f-mono); font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--f-mono); font-size:.72rem; letter-spacing:.18em; text-transform:uppercase; color:var(--amber); margin:0 0 10px}
+
+nav{position:sticky; top:env(safe-area-inset-top,0px); z-index:50;
+  background:color-mix(in srgb,var(--ink) 88%,transparent); backdrop-filter:blur(12px); border-bottom:1px solid var(--line)}
+.navin{max-width:1140px; margin:0 auto; padding:12px 20px; display:flex; align-items:center; gap:18px; flex-wrap:wrap}
+.brand{font-family:var(--f-display); font-weight:900; font-size:1.05rem; letter-spacing:-.03em; display:flex; align-items:center; gap:9px}
+.dot{width:8px; height:8px; border-radius:50%; background:var(--teal); box-shadow:0 0 0 3px color-mix(in srgb,var(--teal) 22%,transparent)}
+@media (prefers-reduced-motion:no-preference){ .dot{animation:pulse 2.6s ease-in-out infinite} }
+@keyframes pulse{0%,100%{box-shadow:0 0 0 3px color-mix(in srgb,var(--teal) 22%,transparent)}50%{box-shadow:0 0 0 8px color-mix(in srgb,var(--teal) 0%,transparent)}}
+nav a{color:var(--fg-dim); text-decoration:none; font-size:.86rem; font-family:var(--f-mono)}
+nav a:hover{color:var(--amber)}
+nav .sp{margin-left:auto}
+#themeBtn{font-family:var(--f-mono); font-size:.78rem; background:transparent; color:var(--fg-dim);
+  border:1px solid var(--line); border-radius:6px; padding:5px 10px; cursor:pointer}
+#themeBtn:hover{color:var(--amber); border-color:var(--amber)}
+:focus-visible{outline:2px solid var(--amber); outline-offset:2px}
+
+.tape{border-bottom:1px solid var(--line); background:var(--ink-2); overflow:hidden; padding:7px 0}
+.tapetrack{display:flex; gap:30px; white-space:nowrap; font-family:var(--f-mono); font-size:.74rem; color:var(--fg-faint); width:max-content}
+@media (prefers-reduced-motion:no-preference){ .tapetrack{animation:slide 46s linear infinite} }
+@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.tape b{color:var(--amber); font-weight:500}
+
+header{padding-block:56px 28px}
+h1{font-size:clamp(2.3rem,6.4vw,4.3rem); line-height:.98}
+h1 em{font-style:normal; color:var(--amber); display:block}
+.lede{color:var(--fg-dim); font-size:clamp(1rem,1.9vw,1.18rem); max-width:62ch; margin:20px 0 0}
+.heroGrid{display:grid; grid-template-columns:1fr; gap:22px; margin-top:34px}
+@media(min-width:880px){ .heroGrid{grid-template-columns:1.45fr 1fr; align-items:end} }
+.chartCard{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; min-width:0}
+.chartHd{display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:8px}
+.chartHd h3{font-size:.95rem}
+.chartHd span{font-family:var(--f-mono); font-size:.72rem; color:var(--fg-faint)}
+canvas{display:block; width:100%; height:auto; max-width:100%}
+.twin{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+@media(max-width:520px){ .twin{grid-template-columns:1fr} }
+.big{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px; position:relative; overflow:hidden}
+.big.hi{border-color:color-mix(in srgb,var(--amber) 42%,var(--line))}
+.big.hi::after{content:""; position:absolute; inset:-60% -30% auto auto; width:190px; height:190px; border-radius:50%;
+  background:radial-gradient(circle,color-mix(in srgb,var(--amber) 26%,transparent),transparent 70%); pointer-events:none}
+.big .k{font-family:var(--f-mono); font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--fg-faint)}
+.big .v{font-family:var(--f-display); font-weight:900; font-size:clamp(1.6rem,4.4vw,2.4rem); line-height:1.1; letter-spacing:-.03em; margin-top:6px}
+.big .v.pos{color:var(--amber)} .big .v.neg{color:var(--coral)}
+.big .s{font-family:var(--f-mono); font-size:.74rem; color:var(--fg-dim); margin-top:6px}
+
+section{padding-block:52px; border-top:1px solid var(--line)}
+section h2{font-size:clamp(1.5rem,3.4vw,2.1rem); margin-bottom:10px}
+.sub{color:var(--fg-dim); max-width:66ch; margin:0 0 26px}
+.cards{display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(248px,1fr))}
+.card{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0}
+.card h3{font-size:1rem; margin-bottom:8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.card p{margin:0; color:var(--fg-dim); font-size:.92rem}
+.tag{font-family:var(--f-mono); font-size:.64rem; letter-spacing:.1em; text-transform:uppercase;
+  border:1px solid var(--line); border-radius:999px; padding:2px 8px; color:var(--fg-faint)}
+
+.pipe{display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.step{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px; min-width:0}
+.step .n{font-family:var(--f-mono); font-size:.68rem; color:var(--amber); letter-spacing:.12em}
+.step h4{font-family:var(--f-display); font-weight:800; font-size:1rem; margin:5px 0 7px}
+.step p{margin:0; font-size:.87rem; color:var(--fg-dim)}
+
+.tbl{overflow-x:auto; border:1px solid var(--line); border-radius:12px; background:var(--panel)}
+table{border-collapse:collapse; width:100%; min-width:460px}
+th,td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--line); font-size:.88rem}
+th{font-family:var(--f-mono); font-size:.68rem; letter-spacing:.12em; text-transform:uppercase; color:var(--fg-faint); font-weight:500}
+tr:last-child td{border-bottom:none}
+td.num{font-family:var(--f-mono); font-variant-numeric:tabular-nums; text-align:right}
+td.pos{color:var(--teal)} td.neg{color:var(--coral)}
+
+.bars{display:grid; gap:7px}
+.bar{display:grid; grid-template-columns:62px 1fr 74px; align-items:center; gap:10px; font-family:var(--f-mono); font-size:.8rem}
+.bar .lbl{color:var(--fg-dim)}
+.bar .track{height:20px; background:color-mix(in srgb,var(--fg-faint) 11%,transparent); border-radius:4px; position:relative; overflow:hidden; min-width:0}
+.bar .fill{height:100%; border-radius:4px; background:linear-gradient(90deg,color-mix(in srgb,var(--amber) 55%,transparent),var(--amber))}
+.bar .fill.neg{background:linear-gradient(90deg,color-mix(in srgb,var(--coral) 45%,transparent),var(--coral))}
+.bar .val{text-align:right; color:var(--fg)}
+@media (prefers-reduced-motion:no-preference){ .bar .fill{animation:grow .9s cubic-bezier(.2,.8,.2,1) both} }
+@keyframes grow{from{transform:scaleX(.04); transform-origin:left}to{transform:scaleX(1); transform-origin:left}}
+
+.note{border-left:3px solid var(--amber); background:color-mix(in srgb,var(--amber) 7%,var(--panel));
+  border-radius:0 10px 10px 0; padding:16px 18px; margin-top:20px}
+.note.warn{border-left-color:var(--coral); background:color-mix(in srgb,var(--coral) 7%,var(--panel))}
+.note.quiet{border-left-color:var(--fg-faint); background:var(--panel)}
+.note h3{font-size:.98rem; margin-bottom:6px}
+.note p{margin:0; color:var(--fg-dim); font-size:.9rem}
+.note p+p{margin-top:8px}
+
+footer{border-top:1px solid var(--line); padding-block:34px 44px; color:var(--fg-faint); font-size:.82rem}
+footer p{max-width:78ch; margin:0 0 10px}
+footer strong{color:var(--fg-dim)}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+</head>
+<body>
+<nav>
+  <div class="navin">
+    <div class="brand"><span class="dot" aria-hidden="true"></span>Trend Resonance</div>
+    <a href="#how">Method</a>
+    <a href="#eng">Engineering</a>
+    <a href="#result">Backtest</a>
+    <span class="sp"></span>
+    <a class="lang" href="./zh/" hreflang="zh-CN" lang="zh-CN">中文</a>
+    <button id="themeBtn" type="button">Theme</button>
+  </div>
+</nav>
+
+<div class="tape"><div class="tapetrack" id="tape" aria-hidden="true"></div></div>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">USDT perpetual futures · Multi-timeframe · Fully automated</p>
+    <h1>The higher timeframe decides direction<em>the lower one pulls the trigger</em></h1>
+    <p class="lede">A long-only systematic breakout strategy for crypto perpetual futures. A higher-timeframe channel first decides whether the market is trending or ranging; lower-timeframe breakout signals are allowed to fire only when direction is confirmed. Entries then require a pullback confirmation, so breakouts are not chased at the top. Every bar's decision — including the rejected ones — is written to a database and can be replayed trade by trade.</p>
+
+    <div class="heroGrid">
+      <div class="chartCard">
+        <div class="chartHd">
+          <h3>Backtest equity curve (indexed to 100)</h3>
+          <span id="eqMeta" class="mono"></span>
+        </div>
+        <canvas id="eq" width="900" height="330" role="img" aria-label="Backtest equity curve, indexed to 100 at start, peaking at 387 and ending at 358"></canvas>
+      </div>
+      <div class="twin">
+        <div class="big hi"><div class="k">Backtest return · 380 days</div><div class="v pos">+250.89%</div><div class="s">233.9% annualized</div></div>
+        <div class="big"><div class="k">Max drawdown</div><div class="v">36.44%</div><div class="s">Over a third peak-to-trough</div></div>
+        <div class="big"><div class="k">Trades</div><div class="v">396</div><div class="s">44.44% win rate</div></div>
+        <div class="big"><div class="k">Payoff / profit factor</div><div class="v">1.92</div><div class="s">Profit factor 1.54</div></div>
+      </div>
+    </div>
+
+    <div class="note warn">
+      <h3>Every figure on this page is from a backtest</h3>
+      <p><strong>All returns, drawdowns and win rates below come from replaying 380 days of historical data. They are not realized account performance.</strong> The backtest charges trading fees, funding and stop slippage, and triggers stops on bar highs and lows the way live execution does. It cannot reproduce real fill liquidity, latency or slippage in extreme conditions. Parameters were selected over multiple passes on historical data, so overfitting is possible.</p>
+    </div>
+  </header>
+</div>
+
+<div class="wrap">
+<section id="how">
+  <p class="eyebrow">Method</p>
+  <h2>Six gates, every one of them rejects orders</h2>
+  <p class="sub">A signal must clear market regime, breakout trigger, entry timing, signal quality, event avoidance and capital constraints, in that order. Any gate that fails leaves a decision record with its reason and no position. The system therefore sits flat for long stretches in ranging markets.</p>
+  <div class="pipe">
+    <div class="step"><div class="n">01 / Regime</div><h4>Higher timeframe sets direction</h4><p>A breakout channel and a volatility channel on the higher timeframe jointly classify the market as trending or ranging. When it reads as ranging, every lower-timeframe breakout is rejected outright.</p></div>
+    <div class="step"><div class="n">02 / Trigger</div><h4>Session rails breakout</h4><p>After each session opens, historical range produces a pair of buy and sell rails fixed for the day. Only a close beyond a rail counts as a valid breakout; an intrabar wick does not.</p></div>
+    <div class="step"><div class="n">03 / Timing</div><h4>Pullback confirmation</h4><p>A confirmed breakout is not chased. Price must pull back into a tolerance band around a short-period moving average before an order goes out. Breakouts that stay outside the band are abandoned rather than filled at a worse price.</p></div>
+    <div class="step"><div class="n">04 / Worth the bet?</div><h4>Multi-factor quality score</h4><p>Trend conviction, breakout depth, pullback precision and volume expansion combine into a 0–1 quality score. Below threshold, no position is opened. The score and each component are stored with the decision.</p></div>
+    <div class="step"><div class="n">05 / Event avoidance</div><h4>Macro blackout window</h4><p>Inside a fixed window before high-impact events such as Federal Reserve rate decisions, the system neither opens new positions nor adds to existing ones. The calendar is built in and warns before it runs out.</p></div>
+    <div class="step"><div class="n">06 / How much</div><h4>Risk budget sets size</h4><p>The stop location is fixed first, then contract count is derived from how much risk the trade is allowed to carry — not the other way round. Per-trade risk, per-position risk, per-instrument margin share and total exposure each clip the size in turn.</p></div>
+  </div>
+</section>
+
+<section id="eng">
+  <p class="eyebrow">Engineering</p>
+  <h2>The strategy is half of it; staying alive is the other half</h2>
+  <p class="sub">Live trading and backtesting run the same engine code, and one configuration both replays history and drives the live account. Backtest conclusions can therefore be verified bar by bar against live behaviour.</p>
+  <div class="cards">
+    <div class="card"><h3>Full decision audit <span class="tag">replayable</span></h3><p>Not just fills. Every bar and every instrument writes a decision record with each quality-score component and the reason for rejection. "Why was there no entry?" can always be answered down to the specific gate.</p></div>
+    <div class="card"><h3>Market data resilience <span class="tag">self-healing</span></h3><p>A dropped feed reconnects and backfills the missing bars. An outage past a threshold trips a circuit breaker that halts new entries. Brief flaps are debounced, so they do not generate alert noise.</p></div>
+    <div class="card"><h3>Ledger reconciliation <span class="tag">every 15s</span></h3><p>While flat, book equity is continuously compared against the exchange balance and any mismatch alerts immediately. A missed fill, fee or funding charge surfaces within a minute, not at month-end.</p></div>
+    <div class="card"><h3>Stops live at the exchange <span class="tag">process-independent</span></h3><p>The initial stop rests as an order at the exchange, so a crash, a network loss or a restart does not affect it. After a restart the system adopts existing positions without duplicating orders.</p></div>
+    <div class="card"><h3>Hard capital limits <span class="tag">layered</span></h3><p>Per-trade risk, per-position risk, per-instrument margin share and total exposure clip contract count before the order is sent. When a limit binds, the reason is recorded rather than the size being silently shrunk.</p></div>
+    <div class="card"><h3>Parameter changes leave a trail <span class="tag">auditable</span></h3><p>Every configuration change ships with its evidence: before-and-after backtests, the sample window and the basis for the decision, all committed to version control. Nothing changes on a hunch.</p></div>
+  </div>
+</section>
+
+<section id="result">
+  <p class="eyebrow">Backtest</p>
+  <h2>380 days · 396 trades</h2>
+  <p class="sub">Trading fees, funding and stop slippage are all charged; stops trigger on bar highs and lows as they do live. Figures below are normalized and carry no account-size information.</p>
+  <div class="cards">
+    <div class="card"><h3>Monthly return</h3><p style="margin-bottom:12px">Percent of starting capital, summed from trade net P&amp;L before funding costs — 257.96% in total; net of funding for the whole period this is the 250.89% headline return. Two months produced seven tenths of all profit.</p><div class="bars" id="moBars"></div></div>
+    <div class="card"><h3>Where the profit came from</h3><p style="margin-bottom:12px">Share of total profit per instrument, ranked and anonymized, summing to 100%.</p><div class="bars" id="anonBars"></div></div>
+  </div>
+  <div class="note">
+    <h3>Profit is highly concentrated — this is the thing to know</h3>
+    <p><strong>The best two months together account for 70.3% of all profit, and 4 of the remaining 12 months were negative.</strong> The pattern repeats across instruments: the single largest contributor produced 34.6% of total profit, while the bottom two were negative.</p>
+    <p>Returns come from a handful of strong trending regimes, not from steady daily accumulation. In ranging markets the system stays flat for long stretches — live, it once went six consecutive days without a single entry. Any arithmetic that extrapolates the annualized figure down to a month or a week is wrong.</p>
+  </div>
+  <div class="tbl" style="margin-top:20px"><table>
+    <thead><tr><th>Metric</th><th class="num">Value</th><th>Metric</th><th class="num">Value</th></tr></thead>
+    <tbody>
+      <tr><td>Sample length</td><td class="num">380 days</td><td>Trades</td><td class="num">396</td></tr>
+      <tr><td>Total return</td><td class="num pos">+250.89%</td><td>Win rate</td><td class="num">44.44%</td></tr>
+      <tr><td>Annualized</td><td class="num pos">233.9%</td><td>Payoff ratio</td><td class="num">1.92</td></tr>
+      <tr><td>Max drawdown</td><td class="num">36.44%</td><td>Profit factor</td><td class="num">1.54</td></tr>
+      <tr><td>Closed by stop</td><td class="num">23 / 5.8%</td><td>Other exits</td><td class="num">373</td></tr>
+    </tbody>
+  </table></div>
+</section>
+</div>
+
+<div class="wrap"><footer>
+  <p><strong>Risk disclosure.</strong> This page is a technical writeup. It is not investment advice, an offer, or a promise of returns. Crypto perpetual futures are leveraged derivatives with violent price swings and you can lose your entire capital in a short time. This system trades with leverage and its backtest maximum drawdown is 36.44%, meaning an account could shrink by more than a third under comparable conditions.</p>
+  <p><strong>About the backtest.</strong> Results are produced from historical data with trading fees, funding and stop slippage charged, but they cannot fully reproduce real fill liquidity, latency or slippage in extreme conditions. Past performance does not indicate future results. Parameters were selected over multiple passes on historical data, so overfitting is possible.</p>
+  <p><strong>About the source of these figures.</strong> Every performance metric shown is produced by replaying historical data and is not realized account performance. The system does run on a live account, but the accumulated live trade count is too small to support statistical conclusions, so live performance figures are not published here.</p>
+  <p style="margin-top:18px; color:var(--fg-faint)">Data as of 2026-10-14 · Backtest window 2025-09-29 to 2026-10-12 · Same engine for backtest and live · Chart values normalized</p>
+</footer></div>
+
+<script>
+const IDX = [["2025-09-29",97.82],["2025-09-30",96.42],["2025-10-02",109.38],["2025-10-03",112.21],["2025-10-04",110.75],["2025-10-05",108.12],["2025-10-07",103.28],["2025-10-15",101.69],["2025-10-20",100.75],["2025-10-21",98.61],["2025-10-26",99.15],["2025-10-27",98.17],["2025-11-01",100.47],["2025-11-07",107.81],["2025-11-10",109.12],["2025-11-11",107.58],["2025-11-25",105.11],["2025-11-26",103.15],["2025-11-27",104.84],["2025-11-28",102.34],["2025-12-03",102.33],["2025-12-04",101.06],["2025-12-08",99.21],["2025-12-23",97.35],["2025-12-28",96.35],["2025-12-29",85.19],["2026-01-02",101.89],["2026-01-03",109.8],["2026-01-06",118.78],["2026-01-07",114.87],["2026-01-12",112.49],["2026-01-13",115.06],["2026-01-14",116.47],["2026-01-15",114.41],["2026-02-14",124.08],["2026-02-15",126.65],["2026-02-17",128.77],["2026-02-19",124.41],["2026-02-21",122.15],["2026-02-26",117.31],["2026-03-05",147.53],["2026-03-09",145.53],["2026-03-10",150.03],["2026-03-11",140.88],["2026-03-12",145.71],["2026-03-13",149.38],["2026-03-14",145.07],["2026-03-17",145.24],["2026-03-20",138.87],["2026-03-24",143.24],["2026-03-25",147.6],["2026-03-26",137.82],["2026-03-27",133.17],["2026-04-01",136.96],["2026-04-02",130.87],["2026-04-06",123.31],["2026-04-07",121.32],["2026-04-08",112.34],["2026-04-09",110.17],["2026-04-10",113.5],["2026-04-11",115.24],["2026-04-12",111.38],["2026-04-14",107.23],["2026-04-15",109.64],["2026-04-16",124.05],["2026-04-17",126.94],["2026-04-18",120.1],["2026-04-22",117.74],["2026-04-25",119.94],["2026-04-26",123.88],["2026-04-27",121.98],["2026-05-02",125.84],["2026-05-03",125.96],["2026-05-04",124.68],["2026-05-05",126.93],["2026-05-06",141.59],["2026-05-07",142.6],["2026-05-08",154.88],["2026-05-09",155.2],["2026-05-10",149.92],["2026-05-11",149.58],["2026-05-13",159.2],["2026-05-15",155.41],["2026-05-19",151.0],["2026-05-20",160.12],["2026-05-21",155.9],["2026-05-22",145.54],["2026-05-28",141.77],["2026-05-29",144.84],["2026-05-30",143.16],["2026-06-01",145.19],["2026-06-02",141.24],["2026-06-04",139.56],["2026-06-14",139.55],["2026-06-15",162.48],["2026-06-16",160.01],["2026-06-26",162.73],["2026-06-27",159.13],["2026-06-28",156.23],["2026-07-02",169.22],["2026-07-03",173.3],["2026-07-04",180.07],["2026-07-05",178.98],["2026-07-09",185.31],["2026-07-15",207.04],["2026-07-16",202.76],["2026-07-21",208.18],["2026-07-22",210.08],["2026-07-27",197.71],["2026-07-31",189.56],["2026-08-03",186.57],["2026-08-04",186.7],["2026-08-05",183.53],["2026-08-07",180.93],["2026-08-08",197.76],["2026-08-09",203.81],["2026-08-10",204.18],["2026-08-12",202.37],["2026-08-13",208.61],["2026-08-15",228.21],["2026-08-17",219.86],["2026-08-19",264.7],["2026-08-20",301.04],["2026-08-21",326.76],["2026-08-22",319.82],["2026-08-25",314.25],["2026-08-27",310.97],["2026-08-28",308.25],["2026-09-04",295.29],["2026-09-05",290.44],["2026-09-06",316.03],["2026-09-07",309.66],["2026-09-09",304.15],["2026-09-12",297.71],["2026-09-18",346.35],["2026-09-19",376.31],["2026-09-20",378.07],["2026-09-22",371.66],["2026-09-23",375.77],["2026-09-25",379.33],["2026-09-26",387.41],["2026-09-27",371.0],["2026-10-04",367.44],["2026-10-05",363.03],["2026-10-06",371.54],["2026-10-08",368.13],["2026-10-12",357.96]], MO = [["2025-09",-3.58],["2025-10",1.75],["2025-11",4.17],["2025-12",-17.15],["2026-01",29.22],["2026-02",2.9],["2026-03",15.87],["2026-04",-11.2],["2026-05",21.18],["2026-06",13.07],["2026-07",33.32],["2026-08",118.7],["2026-09",62.75],["2026-10",-13.04]], ANON = [["\u6807\u7684 A",34.6],["\u6807\u7684 B",13.6],["\u6807\u7684 C",11.4],["\u6807\u7684 D",10.9],["\u6807\u7684 E",10.7],["\u6807\u7684 F",9.1],["\u6807\u7684 G",6.2],["\u6807\u7684 H",3.7],["\u6807\u7684 I",2.6],["\u6807\u7684 J",1.6],["\u6807\u7684 K",1.1],["\u6807\u7684 L",1.0],["\u6807\u7684 M",0.5],["\u6807\u7684 N",-0.9],["\u6807\u7684 O",-6.3]];
+
+(function(){
+  const items = [
+    ['Backtest sample','380 days / 396 trades'],['Total return','+250.89%'],['Annualized','233.9%'],
+    ['Max drawdown','36.44%'],['Win rate','44.44%'],['Payoff ratio','1.92'],['Profit factor','1.54'],
+    ['Concentration','Best 2 months = 70%'],['Direction','Long only']
+  ];
+  const one = items.map(i=>`<span>${i[0]} <b>${i[1]}</b></span>`).join('');
+  document.getElementById('tape').innerHTML = one + one;
+})();
+
+(function(){
+  const btn = document.getElementById('themeBtn'), root = document.documentElement;
+  try{ const s = localStorage.getItem('tc-theme'); if(s) root.setAttribute('data-theme', s); }catch(e){}
+  btn.addEventListener('click', ()=>{
+    const cur = root.getAttribute('data-theme');
+    const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const next = cur ? (cur === 'dark' ? 'light' : 'dark') : (sysDark ? 'light' : 'dark');
+    root.setAttribute('data-theme', next);
+    try{ localStorage.setItem('tc-theme', next); }catch(e){}
+    drawEq();
+  });
+})();
+
+function hexA(hex,a){
+  const h = hex.replace('#','');
+  const n = h.length===3 ? h.split('').map(c=>c+c).join('') : h;
+  return `rgba(${parseInt(n.slice(0,2),16)},${parseInt(n.slice(2,4),16)},${parseInt(n.slice(4,6),16)},${a})`;
+}
+
+function drawEq(){
+  const c = document.getElementById('eq'); if(!c) return;
+  const cs = getComputedStyle(document.documentElement);
+  const amber = cs.getPropertyValue('--amber').trim() || '#ffb020';
+  const dim   = cs.getPropertyValue('--fg-faint').trim() || '#5d6b86';
+  const line  = cs.getPropertyValue('--line').trim() || '#1f2a3d';
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const cssW = c.clientWidth || 900, cssH = Math.round(cssW * 0.37);
+  c.width = Math.round(cssW*dpr); c.height = Math.round(cssH*dpr); c.style.height = cssH+'px';
+  const g = c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,cssW,cssH);
+
+  const padL = 46, padR = 12, padT = 14, padB = 26;
+  const W = cssW-padL-padR, H = cssH-padT-padB;
+  const vals = IDX.map(d=>d[1]);
+  const dMin = Math.min(...vals), dMax = Math.max(...vals);
+  const lo = dMin*0.95, hi = dMax*1.04;
+  const x = i => padL + (i/(IDX.length-1))*W;
+  const y = v => padT + (1-(v-lo)/(hi-lo))*H;
+
+  g.font = '11px ui-monospace, Menlo, monospace'; g.textBaseline = 'middle';
+  const step = 100;
+  for(let v = Math.ceil(dMin/step)*step; v <= dMax; v += step){
+    g.strokeStyle = line; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(padL, y(v)); g.lineTo(cssW-padR, y(v)); g.stroke();
+    g.fillStyle = dim; g.textAlign = 'right'; g.fillText(String(v), padL-8, y(v));
+  }
+
+  g.textAlign='center'; g.textBaseline='top';
+  let lastMo='';
+  IDX.forEach((d,i)=>{
+    const mo = d[0].slice(0,7);
+    if(mo!==lastMo && i>2 && i<IDX.length-2){
+      lastMo = mo;
+      if(Number(mo.slice(5,7))%3===1){ g.fillStyle=dim; g.fillText(mo.slice(2).replace('-','/'), x(i), cssH-padB+6); }
+    }
+  });
+
+  const grad = g.createLinearGradient(0,padT,0,padT+H);
+  grad.addColorStop(0, hexA(amber,.34)); grad.addColorStop(1, hexA(amber,0));
+  g.beginPath(); g.moveTo(x(0), y(vals[0]));
+  IDX.forEach((d,i)=> g.lineTo(x(i), y(d[1])));
+  g.lineTo(x(IDX.length-1), padT+H); g.lineTo(x(0), padT+H); g.closePath();
+  g.fillStyle = grad; g.fill();
+
+  g.beginPath(); g.moveTo(x(0), y(vals[0]));
+  IDX.forEach((d,i)=> g.lineTo(x(i), y(d[1])));
+  g.strokeStyle = amber; g.lineWidth = 2; g.lineJoin='round';
+  g.shadowColor = hexA(amber,.55); g.shadowBlur = 10; g.stroke(); g.shadowBlur = 0;
+
+  g.setLineDash([4,4]); g.strokeStyle = dim; g.lineWidth = 1;
+  g.beginPath(); g.moveTo(padL, y(100)); g.lineTo(cssW-padR, y(100)); g.stroke();
+  g.setLineDash([]);
+  g.fillStyle = dim; g.textAlign='left'; g.textBaseline='bottom';
+  g.fillText('起点 100', padL+4, y(100)-3);
+
+  const lx = x(IDX.length-1), ly = y(vals[vals.length-1]);
+  g.beginPath(); g.arc(lx,ly,4,0,Math.PI*2); g.fillStyle=amber; g.fill();
+  g.beginPath(); g.arc(lx,ly,8,0,Math.PI*2); g.strokeStyle=hexA(amber,.4); g.lineWidth=2; g.stroke();
+}
+drawEq();
+let rt; window.addEventListener('resize', ()=>{ clearTimeout(rt); rt=setTimeout(drawEq,160); });
+document.getElementById('eqMeta').textContent =
+  IDX[0][0] + ' → ' + IDX[IDX.length-1][0] + '  ·  100 → ' + IDX[IDX.length-1][1].toFixed(0);
+
+function bars(el, rows, suffix){
+  const max = Math.max(...rows.map(r=>Math.abs(r[1])));
+  el.innerHTML = rows.map(r=>{
+    const w = Math.max(1.5, Math.abs(r[1])/max*100), neg = r[1] < 0;
+    return `<div class="bar"><span class="lbl">${r[0]}</span>`
+      + `<span class="track"><span class="fill${neg?' neg':''}" style="width:${w}%"></span></span>`
+      + `<span class="val">${r[1]>=0?'+':''}${r[1].toFixed(1)}${suffix}</span></div>`;
+  }).join('');
+}
+bars(document.getElementById('moBars'), MO.map(m=>[m[0].slice(2), m[1]]), '%');
+bars(document.getElementById('anonBars'), ANON.map(a=>[a[0].replace('标的 ',''), a[1]]), '%');
+</script>
+
+</body>
+</html>
