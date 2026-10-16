@@ -165,7 +165,7 @@ footer strong{color:var(--fg-dim)}
   <div class="navin">
     <div class="brand"><span class="dot" aria-hidden="true"></span>Trend Resonance</div>
     <a href="#how">Method</a>
-    <a href="#eng">Engineering</a>
+    <a href="#gate2">Second gate</a><a href="#eng">Engineering</a>
     <a href="#result">Backtest</a>
     <span class="sp"></span>
     <a class="lang" href="./zh/" hreflang="zh-CN" lang="zh-CN">中文</a>
@@ -190,10 +190,10 @@ footer strong{color:var(--fg-dim)}
         <canvas id="eq" width="900" height="330" role="img" aria-label="Backtest equity curve, indexed to 100 at start, peaking at 387 and ending at 358"></canvas>
       </div>
       <div class="twin">
-        <div class="big hi"><div class="k">Backtest return · 380 days</div><div class="v pos">+250.89%</div><div class="s">233.9% annualized</div></div>
-        <div class="big"><div class="k">Max drawdown</div><div class="v">36.44%</div><div class="s">Over a third peak-to-trough</div></div>
-        <div class="big"><div class="k">Trades</div><div class="v">396</div><div class="s">44.44% win rate</div></div>
-        <div class="big"><div class="k">Payoff / profit factor</div><div class="v">1.92</div><div class="s">Profit factor 1.54</div></div>
+        <div class="big hi"><div class="k">Backtest return · 380 days</div><div class="v pos">+293.24%</div><div class="s">272.6% annualized · with the second gate</div></div>
+        <div class="big"><div class="k">Max drawdown</div><div class="v">29.47%</div><div class="s">36.45% before the second gate</div></div>
+        <div class="big"><div class="k">Trades</div><div class="v">372</div><div class="s">44.62% win rate</div></div>
+        <div class="big"><div class="k">Payoff / profit factor</div><div class="v">1.95</div><div class="s">Profit factor 1.57</div></div>
       </div>
     </div>
 
@@ -207,15 +207,38 @@ footer strong{color:var(--fg-dim)}
 <div class="wrap">
 <section id="how">
   <p class="eyebrow">Method</p>
-  <h2>Six gates, every one of them rejects orders</h2>
-  <p class="sub">A signal must clear market regime, breakout trigger, entry timing, signal quality, event avoidance and capital constraints, in that order. Any gate that fails leaves a decision record with its reason and no position. The system therefore sits flat for long stretches in ranging markets.</p>
+  <h2>Seven gates, every one of them rejects orders</h2>
+  <p class="sub">A signal must clear market regime, breakout trigger, entry timing, signal quality, a second quality gate, event avoidance and capital constraints, in that order. Any gate that fails leaves a decision record with its reason and no position. The system therefore sits flat for long stretches in ranging markets.</p>
   <div class="pipe">
     <div class="step"><div class="n">01 / Regime</div><h4>Higher timeframe sets direction</h4><p>A breakout channel and a volatility channel on the higher timeframe jointly classify the market as trending or ranging. When it reads as ranging, every lower-timeframe breakout is rejected outright.</p></div>
     <div class="step"><div class="n">02 / Trigger</div><h4>Session rails breakout</h4><p>After each session opens, historical range produces a pair of buy and sell rails fixed for the day. Only a close beyond a rail counts as a valid breakout; an intrabar wick does not.</p></div>
     <div class="step"><div class="n">03 / Timing</div><h4>Pullback confirmation</h4><p>A confirmed breakout is not chased. Price must pull back into a tolerance band around a short-period moving average before an order goes out. Breakouts that stay outside the band are abandoned rather than filled at a worse price.</p></div>
     <div class="step"><div class="n">04 / Worth the bet?</div><h4>Multi-factor quality score</h4><p>Trend conviction, breakout depth, pullback precision and volume expansion combine into a 0–1 quality score. Below threshold, no position is opened. The score and each component are stored with the decision.</p></div>
-    <div class="step"><div class="n">05 / Event avoidance</div><h4>Macro blackout window</h4><p>Inside a fixed window before high-impact events such as Federal Reserve rate decisions, the system neither opens new positions nor adds to existing ones. The calendar is built in and warns before it runs out.</p></div>
-    <div class="step"><div class="n">06 / How much</div><h4>Risk budget sets size</h4><p>The stop location is fixed first, then contract count is derived from how much risk the trade is allowed to carry — not the other way round. Per-trade risk, per-position risk, per-instrument margin share and total exposure each clip the size in turn.</p></div>
+    <div class="step"><div class="n">05 / Second opinion</div><h4>A gate that may only reject</h4><p>A separate score reviews what gate 04 passed. It is built from a broad factor library that is first reduced to independent clusters, so no crowded group of correlated factors can dominate the vote. It has one power only: it can <strong>veto</strong>, never promote. Signals in its weakest band are dropped, and the instrument is left free for the next bar that clears every gate.</p></div>
+    <div class="step"><div class="n">06 / Event avoidance</div><h4>Macro blackout window</h4><p>Inside a fixed window before high-impact events such as Federal Reserve rate decisions, the system neither opens new positions nor adds to existing ones. The calendar is built in and warns before it runs out.</p></div>
+    <div class="step"><div class="n">07 / How much</div><h4>Risk budget sets size</h4><p>The stop location is fixed first, then contract count is derived from how much risk the trade is allowed to carry — not the other way round. Per-trade risk, per-position risk, per-instrument margin share and total exposure each clip the size in turn.</p></div>
+  </div>
+</section>
+
+<section id="gate2">
+  <h2>The second quality gate, and why it may only reject</h2>
+  <p class="sub">Gate 04 scores a signal from its own entry geometry. Gate 05 was added after measuring a much larger factor library against realized outcomes. Two findings shaped it.</p>
+  <div class="grid2">
+    <div class="card"><h3>Most of a large factor library is one factor in different clothes</h3>
+      <p>A large share of the candidates collapse into a single correlated cluster: at this system&rsquo;s holding horizon, &ldquo;trend strength&rdquo; and &ldquo;price extension&rdquo; turn out to be the same quantity measured two ways. A naive equal-weight vote across the library would hand most of the weight to that one crowded cluster. So the library is reduced to independent clusters first, and weight is assigned per cluster rather than per factor.</p></div>
+    <div class="card"><h3>The new dimensions tell you what to skip, not what to take</h3>
+      <p>Designs that let the new score <em>replace</em> the original one &mdash; so it both rejected and admitted &mdash; all came out worse. Trade-level attribution showed why: the trades they dropped were genuinely below average, but the trades they let in instead were worth close to nothing. Rejection carried skill; admission carried none. So the shipped gate can only veto.</p></div>
+    <div class="card"><h3>It re-times entries rather than cutting exposure</h3>
+      <p>Each instrument holds at most one position, so a vetoed signal does not reduce participation &mdash; it frees the instrument, and the next bar there that clears every gate takes the slot, usually within the hour. This is why it behaves nothing like delaying entries by a fixed clock, which was tested separately and was clearly harmful.</p></div>
+    <div class="card"><h3>A drawdown filter more than a return amplifier</h3>
+      <p>The gain is largest in the weakest market regimes and roughly neutral in the strongest one. Over the window on this page it lowered maximum drawdown by about seven percentage points while taking slightly fewer trades.</p></div>
+  </div>
+  <div class="note">
+    <h3>How it was accepted</h3>
+    <p>The acceptance bar was fixed before the runs, not chosen afterwards.</p>
+    <p><strong>Compared against a random-rejection control at matched trade count</strong>, not only against the previous configuration. Being pickier lowers drawdown on its own, so without that control a design that merely trades less looks like a design that trades better.</p>
+    <p><strong>Scored on zero-overlap windows</strong>, with one window disqualified from ranking because a single trade dominated its result. Any design whose advantage came mostly from one trade or one instrument was treated as an artifact rather than a finding.</p>
+    <p><strong>Alternatives were discarded rather than re-tuned.</strong> Several scores that looked good against the previous configuration failed the random-rejection control and were dropped &mdash; including the one expected beforehand to work best.</p>
   </div>
 </section>
 
@@ -235,25 +258,25 @@ footer strong{color:var(--fg-dim)}
 
 <section id="result">
   <p class="eyebrow">Backtest</p>
-  <h2>380 days · 396 trades</h2>
+  <h2>380 days · 372 trades</h2>
   <p class="sub">Trading fees, funding and stop slippage are all charged; stops trigger on bar highs and lows as they do live. Figures below are normalized and carry no account-size information.</p>
   <div class="cards">
-    <div class="card"><h3>Monthly return</h3><p style="margin-bottom:12px">Percent of starting capital, summed from trade net P&amp;L before funding costs — 257.96% in total; net of funding for the whole period this is the 250.89% headline return. Two months produced seven tenths of all profit.</p><div class="bars" id="moBars"></div></div>
+    <div class="card"><h3>Monthly return</h3><p style="margin-bottom:12px">Percent of starting capital, summed from trade net P&amp;L before funding costs — 300.95% in total; net of funding for the whole period this is the 293.24% headline return. Two months produced about two thirds of all profit.</p><div class="bars" id="moBars"></div></div>
     <div class="card"><h3>Where the profit came from</h3><p style="margin-bottom:12px">Share of total profit per instrument, ranked and anonymized, summing to 100%.</p><div class="bars" id="anonBars"></div></div>
   </div>
   <div class="note">
     <h3>Profit is highly concentrated — this is the thing to know</h3>
-    <p><strong>The best two months together account for 70.3% of all profit, and 4 of the remaining 12 months were negative.</strong> The pattern repeats across instruments: the single largest contributor produced 34.6% of total profit, while the bottom two were negative.</p>
+    <p><strong>The best two months together account for 65.7% of all profit, and 4 of the remaining 12 months were negative.</strong> The pattern repeats across instruments: the single largest contributor produced 35.6% of total profit, while 3 of them were negative.</p>
     <p>Returns come from a handful of strong trending regimes, not from steady daily accumulation. In ranging markets the system stays flat for long stretches — live, it once went six consecutive days without a single entry. Any arithmetic that extrapolates the annualized figure down to a month or a week is wrong.</p>
   </div>
   <div class="tbl" style="margin-top:20px"><table>
     <thead><tr><th>Metric</th><th class="num">Value</th><th>Metric</th><th class="num">Value</th></tr></thead>
     <tbody>
       <tr><td>Sample length</td><td class="num">380 days</td><td>Trades</td><td class="num">396</td></tr>
-      <tr><td>Total return</td><td class="num pos">+250.89%</td><td>Win rate</td><td class="num">44.44%</td></tr>
-      <tr><td>Annualized</td><td class="num pos">233.9%</td><td>Payoff ratio</td><td class="num">1.92</td></tr>
-      <tr><td>Max drawdown</td><td class="num">36.44%</td><td>Profit factor</td><td class="num">1.54</td></tr>
-      <tr><td>Closed by stop</td><td class="num">23 / 5.8%</td><td>Other exits</td><td class="num">373</td></tr>
+      <tr><td>Total return</td><td class="num pos">+293.24%</td><td>Win rate</td><td class="num">44.62%</td></tr>
+      <tr><td>Annualized</td><td class="num pos">272.6%</td><td>Payoff ratio</td><td class="num">1.95</td></tr>
+      <tr><td>Max drawdown</td><td class="num">29.47%</td><td>Profit factor</td><td class="num">1.57</td></tr>
+      <tr><td>Closed by stop</td><td class="num">22 / 5.9%</td><td>Other exits</td><td class="num">350</td></tr>
     </tbody>
   </table></div>
 </section>
@@ -267,13 +290,13 @@ footer strong{color:var(--fg-dim)}
 </footer></div>
 
 <script>
-const IDX = [["2025-09-29",97.82],["2025-09-30",96.42],["2025-10-02",109.38],["2025-10-03",112.21],["2025-10-04",110.75],["2025-10-05",108.12],["2025-10-07",103.28],["2025-10-15",101.69],["2025-10-20",100.75],["2025-10-21",98.61],["2025-10-26",99.15],["2025-10-27",98.17],["2025-11-01",100.47],["2025-11-07",107.81],["2025-11-10",109.12],["2025-11-11",107.58],["2025-11-25",105.11],["2025-11-26",103.15],["2025-11-27",104.84],["2025-11-28",102.34],["2025-12-03",102.33],["2025-12-04",101.06],["2025-12-08",99.21],["2025-12-23",97.35],["2025-12-28",96.35],["2025-12-29",85.19],["2026-01-02",101.89],["2026-01-03",109.8],["2026-01-06",118.78],["2026-01-07",114.87],["2026-01-12",112.49],["2026-01-13",115.06],["2026-01-14",116.47],["2026-01-15",114.41],["2026-02-14",124.08],["2026-02-15",126.65],["2026-02-17",128.77],["2026-02-19",124.41],["2026-02-21",122.15],["2026-02-26",117.31],["2026-03-05",147.53],["2026-03-09",145.53],["2026-03-10",150.03],["2026-03-11",140.88],["2026-03-12",145.71],["2026-03-13",149.38],["2026-03-14",145.07],["2026-03-17",145.24],["2026-03-20",138.87],["2026-03-24",143.24],["2026-03-25",147.6],["2026-03-26",137.82],["2026-03-27",133.17],["2026-04-01",136.96],["2026-04-02",130.87],["2026-04-06",123.31],["2026-04-07",121.32],["2026-04-08",112.34],["2026-04-09",110.17],["2026-04-10",113.5],["2026-04-11",115.24],["2026-04-12",111.38],["2026-04-14",107.23],["2026-04-15",109.64],["2026-04-16",124.05],["2026-04-17",126.94],["2026-04-18",120.1],["2026-04-22",117.74],["2026-04-25",119.94],["2026-04-26",123.88],["2026-04-27",121.98],["2026-05-02",125.84],["2026-05-03",125.96],["2026-05-04",124.68],["2026-05-05",126.93],["2026-05-06",141.59],["2026-05-07",142.6],["2026-05-08",154.88],["2026-05-09",155.2],["2026-05-10",149.92],["2026-05-11",149.58],["2026-05-13",159.2],["2026-05-15",155.41],["2026-05-19",151.0],["2026-05-20",160.12],["2026-05-21",155.9],["2026-05-22",145.54],["2026-05-28",141.77],["2026-05-29",144.84],["2026-05-30",143.16],["2026-06-01",145.19],["2026-06-02",141.24],["2026-06-04",139.56],["2026-06-14",139.55],["2026-06-15",162.48],["2026-06-16",160.01],["2026-06-26",162.73],["2026-06-27",159.13],["2026-06-28",156.23],["2026-07-02",169.22],["2026-07-03",173.3],["2026-07-04",180.07],["2026-07-05",178.98],["2026-07-09",185.31],["2026-07-15",207.04],["2026-07-16",202.76],["2026-07-21",208.18],["2026-07-22",210.08],["2026-07-27",197.71],["2026-07-31",189.56],["2026-08-03",186.57],["2026-08-04",186.7],["2026-08-05",183.53],["2026-08-07",180.93],["2026-08-08",197.76],["2026-08-09",203.81],["2026-08-10",204.18],["2026-08-12",202.37],["2026-08-13",208.61],["2026-08-15",228.21],["2026-08-17",219.86],["2026-08-19",264.7],["2026-08-20",301.04],["2026-08-21",326.76],["2026-08-22",319.82],["2026-08-25",314.25],["2026-08-27",310.97],["2026-08-28",308.25],["2026-09-04",295.29],["2026-09-05",290.44],["2026-09-06",316.03],["2026-09-07",309.66],["2026-09-09",304.15],["2026-09-12",297.71],["2026-09-18",346.35],["2026-09-19",376.31],["2026-09-20",378.07],["2026-09-22",371.66],["2026-09-23",375.77],["2026-09-25",379.33],["2026-09-26",387.41],["2026-09-27",371.0],["2026-10-04",367.44],["2026-10-05",363.03],["2026-10-06",371.54],["2026-10-08",368.13],["2026-10-12",357.96]], MO = [["2025-09",-3.58],["2025-10",1.75],["2025-11",4.17],["2025-12",-17.15],["2026-01",29.22],["2026-02",2.9],["2026-03",15.87],["2026-04",-11.2],["2026-05",21.18],["2026-06",13.07],["2026-07",33.32],["2026-08",118.7],["2026-09",62.75],["2026-10",-13.04]], ANON = [["\u6807\u7684 A",34.6],["\u6807\u7684 B",13.6],["\u6807\u7684 C",11.4],["\u6807\u7684 D",10.9],["\u6807\u7684 E",10.7],["\u6807\u7684 F",9.1],["\u6807\u7684 G",6.2],["\u6807\u7684 H",3.7],["\u6807\u7684 I",2.6],["\u6807\u7684 J",1.6],["\u6807\u7684 K",1.1],["\u6807\u7684 L",1.0],["\u6807\u7684 M",0.5],["\u6807\u7684 N",-0.9],["\u6807\u7684 O",-6.3]];
+const IDX = [["2025-09-29",98.21],["2025-09-30",96.78],["2025-10-02",110.82],["2025-10-03",113.79],["2025-10-04",112.31],["2025-10-05",112.31],["2025-10-07",107.31],["2025-10-15",105.66],["2025-10-20",105.66],["2025-10-21",103.36],["2025-10-26",103.74],["2025-10-27",102.99],["2025-11-01",105.39],["2025-11-07",113.07],["2025-11-10",113.47],["2025-11-11",111.83],["2025-11-25",109.26],["2025-11-26",107.2],["2025-11-27",107.8],["2025-11-28",105.03],["2025-12-03",105.01],["2025-12-04",103.82],["2025-12-08",103.82],["2025-12-23",101.85],["2025-12-28",99.56],["2025-12-29",87.95],["2026-01-02",105.28],["2026-01-03",113.27],["2026-01-06",122.41],["2026-01-07",118.31],["2026-01-12",115.84],["2026-01-13",118.47],["2026-01-14",119.73],["2026-01-15",117.42],["2026-02-14",127.14],["2026-02-15",129.6],["2026-02-17",131.75],["2026-02-19",131.75],["2026-02-21",129.54],["2026-02-26",124.34],["2026-03-05",162.41],["2026-03-09",162.41],["2026-03-10",167.42],["2026-03-11",157.15],["2026-03-12",162.5],["2026-03-13",166.29],["2026-03-14",163.38],["2026-03-17",163.98],["2026-03-20",163.98],["2026-03-24",169.78],["2026-03-25",174.93],["2026-03-26",164.29],["2026-03-27",158.7],["2026-04-01",163.19],["2026-04-02",155.78],["2026-04-06",143.51],["2026-04-07",143.51],["2026-04-08",135.14],["2026-04-09",132.9],["2026-04-10",137.38],["2026-04-11",140.49],["2026-04-12",135.66],["2026-04-14",130.41],["2026-04-15",133.97],["2026-04-16",150.91],["2026-04-17",152.02],["2026-04-18",143.15],["2026-04-22",140.54],["2026-04-25",143.14],["2026-04-26",147.78],["2026-04-27",145.46],["2026-05-02",150.0],["2026-05-03",150.12],["2026-05-04",148.44],["2026-05-05",151.05],["2026-05-06",168.31],["2026-05-07",169.66],["2026-05-08",184.51],["2026-05-09",185.13],["2026-05-10",178.76],["2026-05-11",178.18],["2026-05-13",189.62],["2026-05-15",185.02],["2026-05-19",179.71],["2026-05-20",185.52],["2026-05-21",179.16],["2026-05-22",167.44],["2026-05-28",162.74],["2026-05-29",166.25],["2026-05-30",170.65],["2026-06-01",170.65],["2026-06-02",168.52],["2026-06-04",166.49],["2026-06-14",166.97],["2026-06-15",196.2],["2026-06-16",193.14],["2026-06-26",193.14],["2026-06-27",189.02],["2026-06-28",186.5],["2026-07-02",201.99],["2026-07-03",206.74],["2026-07-04",212.23],["2026-07-05",211.06],["2026-07-09",218.49],["2026-07-15",243.93],["2026-07-16",238.78],["2026-07-21",246.34],["2026-07-22",245.63],["2026-07-27",230.97],["2026-07-31",221.68],["2026-08-03",218.04],["2026-08-04",218.12],["2026-08-05",214.27],["2026-08-07",210.85],["2026-08-08",230.4],["2026-08-09",237.22],["2026-08-10",237.5],["2026-08-12",235.16],["2026-08-13",239.75],["2026-08-15",262.16],["2026-08-17",258.61],["2026-08-18",253.19],["2026-08-19",304.95],["2026-08-20",355.08],["2026-08-21",385.54],["2026-08-22",377.21],["2026-08-25",371.23],["2026-08-27",367.28],["2026-08-28",362.64],["2026-09-04",338.33],["2026-09-05",332.68],["2026-09-06",361.73],["2026-09-07",353.86],["2026-09-09",347.37],["2026-09-12",340.25],["2026-09-18",395.89],["2026-09-19",429.88],["2026-09-20",424.89],["2026-09-22",418.54],["2026-09-23",421.43],["2026-09-24",417.64],["2026-09-25",429.42],["2026-09-26",438.34],["2026-09-27",419.54],["2026-10-04",415.75],["2026-10-05",410.69],["2026-10-06",417.46],["2026-10-08",413.58],["2026-10-12",400.95]], IDX0 = [["2025-09-29",98.21],["2025-09-30",96.78],["2025-10-02",109.63],["2025-10-03",112.38],["2025-10-04",110.9],["2025-10-05",108.23],["2025-10-07",103.33],["2025-10-15",101.74],["2025-10-20",100.78],["2025-10-21",98.63],["2025-10-26",99.13],["2025-10-27",98.44],["2025-11-01",100.74],["2025-11-07",108.08],["2025-11-10",108.23],["2025-11-11",106.68],["2025-11-25",104.22],["2025-11-26",102.26],["2025-11-27",103.86],["2025-11-28",101.35],["2025-12-03",101.33],["2025-12-04",100.18],["2025-12-08",98.32],["2025-12-23",96.46],["2025-12-28",95.44],["2025-12-29",84.26],["2026-01-02",100.71],["2026-01-03",108.37],["2026-01-06",117.19],["2026-01-07",113.25],["2026-01-12",110.88],["2026-01-13",113.4],["2026-01-14",114.13],["2026-01-15",111.91],["2026-02-14",121.24],["2026-02-15",123.7],["2026-02-17",125.76],["2026-02-19",121.48],["2026-02-21",119.24],["2026-02-26",114.45],["2026-03-05",143.79],["2026-03-09",141.81],["2026-03-10",146.21],["2026-03-11",137.21],["2026-03-12",141.88],["2026-03-13",145.42],["2026-03-14",141.19],["2026-03-17",141.23],["2026-03-20",135.14],["2026-03-24",139.38],["2026-03-25",143.6],["2026-03-26",133.97],["2026-03-27",129.43],["2026-04-01",133.08],["2026-04-02",127.09],["2026-04-06",119.69],["2026-04-07",117.72],["2026-04-08",108.91],["2026-04-09",106.76],["2026-04-10",109.96],["2026-04-11",111.61],["2026-04-12",107.85],["2026-04-14",103.82],["2026-04-15",106.64],["2026-04-16",120.5],["2026-04-17",121.09],["2026-04-18",114.05],["2026-04-22",111.78],["2026-04-25",113.83],["2026-04-26",117.51],["2026-04-27",115.67],["2026-05-02",119.27],["2026-05-03",119.37],["2026-05-04",118.06],["2026-05-05",120.13],["2026-05-06",133.82],["2026-05-07",134.61],["2026-05-08",146.15],["2026-05-09",146.37],["2026-05-10",141.35],["2026-05-11",140.89],["2026-05-13",149.91],["2026-05-15",146.32],["2026-05-19",142.13],["2026-05-20",150.67],["2026-05-21",146.93],["2026-05-22",137.07],["2026-05-28",133.51],["2026-05-29",136.38],["2026-05-30",134.78],["2026-06-01",136.67],["2026-06-02",132.93],["2026-06-04",131.33],["2026-06-14",131.29],["2026-06-15",152.67],["2026-06-16",150.32],["2026-06-26",152.86],["2026-06-27",149.62],["2026-06-28",146.88],["2026-07-02",159.0],["2026-07-03",162.72],["2026-07-04",169.02],["2026-07-05",167.98],["2026-07-09",173.88],["2026-07-15",194.08],["2026-07-16",190.0],["2026-07-21",194.94],["2026-07-22",196.58],["2026-07-27",184.87],["2026-07-31",177.26],["2026-08-03",174.36],["2026-08-04",174.42],["2026-08-05",171.35],["2026-08-07",168.87],["2026-08-08",184.49],["2026-08-09",189.94],["2026-08-10",190.17],["2026-08-12",188.3],["2026-08-13",191.97],["2026-08-15",209.87],["2026-08-17",202.3],["2026-08-18",202.3],["2026-08-19",243.36],["2026-08-20",276.54],["2026-08-21",299.93],["2026-08-22",293.45],["2026-08-25",288.31],["2026-08-27",285.25],["2026-08-28",282.71],["2026-09-04",270.85],["2026-09-05",266.34],["2026-09-06",289.6],["2026-09-07",283.71],["2026-09-09",278.59],["2026-09-12",272.91],["2026-09-18",317.33],["2026-09-19",344.52],["2026-09-20",345.84],["2026-09-22",340.17],["2026-09-23",343.75],["2026-09-24",343.75],["2026-09-25",346.87],["2026-09-26",354.07],["2026-09-27",338.88],["2026-10-04",335.58],["2026-10-05",331.5],["2026-10-06",340.75],["2026-10-08",337.58],["2026-10-12",328.16]], MO = [["2025-09",-3.2],["2025-10",6.4],["2025-11",2.0],["2025-12",-16.3],["2026-01",33.5],["2026-02",5.9],["2026-03",27.6],["2026-04",-8.3],["2026-05",17.3],["2026-06",9.3],["2026-07",18.9],["2026-08",63.6],["2026-09",15.7],["2026-10",-4.4]], ANON = [["Instrument A",35.6],["Instrument B",13.4],["Instrument C",12.9],["Instrument D",12.4],["Instrument E",10.2],["Instrument F",8.0],["Instrument G",7.5],["Instrument H",4.7],["Instrument I",3.9],["Instrument J",2.6],["Instrument K",1.8],["Instrument L",0.2],["Instrument M",-4.0],["Instrument N",-4.0],["Instrument O",-5.1]];
 
 (function(){
   const items = [
-    ['Backtest sample','380 days / 396 trades'],['Total return','+250.89%'],['Annualized','233.9%'],
-    ['Max drawdown','36.44%'],['Win rate','44.44%'],['Payoff ratio','1.92'],['Profit factor','1.54'],
-    ['Concentration','Best 2 months = 70%'],['Direction','Long only']
+    ['Backtest sample','380 days / 372 trades'],['Total return','+293.24%'],['Annualized','272.6%'],
+    ['Max drawdown','29.47%'],['Win rate','44.62%'],['Payoff ratio','1.95'],['Profit factor','1.57'],
+    ['Concentration','Best 2 months = 66%'],['Direction','Long only']
   ];
   const one = items.map(i=>`<span>${i[0]} <b>${i[1]}</b></span>`).join('');
   document.getElementById('tape').innerHTML = one + one;
@@ -311,8 +334,9 @@ function drawEq(){
 
   const padL = 46, padR = 12, padT = 14, padB = 26;
   const W = cssW-padL-padR, H = cssH-padT-padB;
-  const vals = IDX.map(d=>d[1]);
-  const dMin = Math.min(...vals), dMax = Math.max(...vals);
+  const vals = IDX.map(d=>d[1]), vals0 = (typeof IDX0!=='undefined'? IDX0.map(d=>d[1]) : []);
+  const all = vals.concat(vals0);
+  const dMin = Math.min(...all), dMax = Math.max(...all);
   const lo = dMin*0.95, hi = dMax*1.04;
   const x = i => padL + (i/(IDX.length-1))*W;
   const y = v => padT + (1-(v-lo)/(hi-lo))*H;
@@ -335,6 +359,14 @@ function drawEq(){
     }
   });
 
+  if(vals0.length === IDX.length){
+    g.beginPath(); g.moveTo(x(0), y(vals0[0]));
+    vals0.forEach((v,i)=> g.lineTo(x(i), y(v)));
+    g.strokeStyle = dim; g.lineWidth = 1.25; g.setLineDash([4,3]); g.stroke(); g.setLineDash([]);
+    g.textAlign='left'; g.textBaseline='middle'; g.font='11px ui-monospace, Menlo, monospace';
+    g.fillStyle = dim;   g.fillText('-- Before the second gate', padL+6, padT+10);
+    g.fillStyle = amber; g.fillText('\u2014 Current', padL+6, padT+26);
+  }
   const grad = g.createLinearGradient(0,padT,0,padT+H);
   grad.addColorStop(0, hexA(amber,.34)); grad.addColorStop(1, hexA(amber,0));
   g.beginPath(); g.moveTo(x(0), y(vals[0]));

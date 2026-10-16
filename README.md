@@ -26,32 +26,44 @@ design working, not a fault.
 and stop slippage are all charged; stops trigger on bar highs and lows as they do
 in live execution.
 
-| Metric | Value | Metric | Value |
-|---|---|---|---|
-| Sample length | 380 days | Trades | 396 |
-| Total return | **+250.89%** | Win rate | 44.44% |
-| Annualized | **233.9%** | Payoff ratio | 1.92 |
-| Max drawdown | **36.44%** | Profit factor | 1.54 |
-| Closed by stop | 23 / 5.8% | Other exits | 373 |
+Two configurations over the same window: the system as it ran until October 2026,
+and the current one with a **second quality gate** added on top (explained below).
+
+| Metric | Until Oct 2026 | **Current** |
+|---|---|---|
+| Sample length | 380 days | 380 days |
+| Trades | 396 | 372 |
+| Total return | +221.44% | **+293.24%** |
+| Annualized | 207.0% | **272.6%** |
+| Max drawdown | 36.45% | **29.47%** |
+| Win rate | 43.43% | 44.62% |
+| Payoff ratio | 1.95 | 1.95 |
+| Profit factor | 1.5 | 1.57 |
+| Closed by stop | 22 / 5.6% | 22 / 5.9% |
 
 **These are backtest figures, not realized account performance.** The system does
 run on a live account, but the accumulated live trade count is too small to support
 statistical conclusions, so live performance numbers are not published here.
 
+Market entries are market orders, so a spread-crossing cost is charged on every
+entry in addition to fees, funding and stop slippage. Earlier versions of this page
+quoted figures without that entry cost; over 380 days it is worth roughly
+30 percentage points of total return, and the numbers above include it.
+
 ### Profit is highly concentrated — this is the thing to know
 
-- The **best two months** together account for **70.3%** of all profit, and **4 of
-  the remaining 12 months were negative**
+- The **best two months** together account for **65.7%** of all profit, and
+  **4 of the remaining 12 months were negative**
 - The pattern repeats across instruments: the single largest contributor produced
-  **34.6%** of total profit, while the bottom two were negative
+  **35.6%** of total profit, while 3 of them were negative
 
 Returns come from a handful of strong trending regimes, not from steady daily
 accumulation. **Any arithmetic that extrapolates the annualized figure down to a
 month or a week is wrong.**
 
-## Method: six gates, every one of them rejects orders
+## Method: seven gates, every one of them rejects orders
 
-A signal must clear six layers in order. Any gate that fails leaves a decision
+A signal must clear seven layers in order. Any gate that fails leaves a decision
 record with its reason and no position.
 
 | | Gate | What it does |
@@ -60,8 +72,61 @@ record with its reason and no position.
 | 02 | **Breakout trigger** | Each session derives a pair of buy/sell rails from historical range, fixed for the day. Only a **close** beyond a rail counts; an intrabar wick does not |
 | 03 | **Entry timing** | A confirmed breakout is not chased. Price must pull back into a tolerance band around a short-period moving average. Breakouts that stay outside are abandoned rather than filled worse |
 | 04 | **Signal quality** | Trend conviction, breakout depth, pullback precision and volume expansion combine into a 0–1 score. Below threshold, no position |
-| 05 | **Event avoidance** | Inside a fixed window before high-impact events such as Federal Reserve rate decisions, no new positions and no adds |
-| 06 | **Position sizing** | Stop location is fixed first, then contract count is derived from the risk the trade may carry. Per-trade risk, per-position risk, per-instrument margin share and total exposure each clip the size in turn |
+| 05 | **Second quality gate** | A separate score, built from a broad factor library reduced to independent clusters, reviews what gate 04 passed. It may only **reject**, never admit. Signals in its weakest band are dropped and the instrument is left free for the next qualifying bar |
+| 06 | **Event avoidance** | Inside a fixed window before high-impact events such as Federal Reserve rate decisions, no new positions and no adds |
+| 07 | **Position sizing** | Stop location is fixed first, then contract count is derived from the risk the trade may carry. Per-trade risk, per-position risk, per-instrument margin share and total exposure each clip the size in turn |
+
+## The second quality gate, and why it may only reject
+
+Gate 04 scores a signal from its own entry geometry. Gate 05 was added after
+measuring a much larger factor library against realized outcomes, and two findings
+shaped it.
+
+**Most of a large factor library is the same factor wearing different clothes.** A
+large share of the candidates collapse into a single correlated cluster: at this
+system's holding horizon, "trend strength" and "price extension" turn out to be the
+same quantity measured two ways. A naive equal-weight vote across the library would
+therefore hand most of the weight to that one crowded cluster. So the library is
+first reduced to independent clusters, and weight is assigned per cluster rather
+than per factor.
+
+**The new dimensions can tell you what to skip, but not what to take.** Designs
+that let the new score *replace* the original one — so it both rejected and admitted
+— all came out worse. Trade-level attribution showed why: the trades those designs
+dropped were genuinely below average, but the trades they let in instead were worth
+close to nothing. Rejection carried skill; admission carried none. The shipped
+design therefore has one power only: it can veto what gate 04 passed, and it can
+never promote anything.
+
+**It re-times entries rather than cutting exposure.** Each instrument holds at most
+one position, so a vetoed signal does not reduce participation — it frees the
+instrument, and the next bar on that instrument which clears every gate takes the
+slot, usually within the hour. This is also why it behaves differently from simply
+delaying entries by a fixed clock, which was tested separately and was clearly
+harmful.
+
+**It is a drawdown filter more than a return amplifier.** The gain is largest in the
+weakest market regimes and roughly neutral in the strongest one. Over the window
+above it lowered maximum drawdown by about seven percentage points while taking
+slightly fewer trades.
+
+### How it was accepted
+
+The acceptance bar was fixed before the runs, not chosen afterwards:
+
+- **Compared against a random-rejection control at matched trade count**, not only
+  against the previous configuration. Being pickier lowers drawdown on its own, so
+  without that control a design that merely trades less looks like a design that
+  trades better.
+- **Scored on zero-overlap windows**, with one window disqualified from ranking
+  because a single trade dominated its result.
+- **Checked for concentration** — a design whose advantage came mostly from one
+  trade or one instrument was treated as an artifact, not a finding.
+- Alternatives were discarded rather than re-tuned. Several scores that looked
+  promising against the previous configuration failed the random-rejection control
+  and were dropped, including the one expected beforehand to work best.
+
+Live since 2026-10-16.
 
 ## Engineering: the strategy is half of it
 
@@ -122,24 +187,32 @@ management, position sizing, technical analysis, quantitative finance.
 
 380 天历史数据回放,15 个交易标的,手续费、资金费与止损滑点全部计入,止损按 K 线最高最低价触发。
 
-| 指标 | 数值 | 指标 | 数值 |
-|---|---|---|---|
-| 样本长度 | 380 天 | 交易笔数 | 396 |
-| 总收益 | **+250.89%** | 胜率 | 44.44% |
-| 年化 | **233.9%** | 盈亏比 | 1.92 |
-| 最大回撤 | **36.44%** | 利润因子 | 1.54 |
-| 止损了结 | 23 笔 / 5.8% | 其余出场 | 373 笔 |
+同一窗口下的两个配置:2026 年 10 月之前运行的版本,以及在其之上加了**第二道质量门**的当前版本(下文说明)。
+
+| 指标 | 2026-10 之前 | **当前** |
+|---|---|---|
+| 样本长度 | 380 天 | 380 天 |
+| 交易笔数 | 396 | 372 |
+| 总收益 | +221.44% | **+293.24%** |
+| 年化 | 207.0% | **272.6%** |
+| 最大回撤 | 36.45% | **29.47%** |
+| 胜率 | 43.43% | 44.62% |
+| 盈亏比 | 1.95 | 1.95 |
+| 利润因子 | 1.5 | 1.57 |
+| 止损了结 | 22 笔 / 5.6% | 22 笔 / 5.9% |
 
 **以上均为回测结果,不是已实现的账户业绩。** 该系统已在真实账户运行,但实盘累计成交笔数尚不足以支撑统计结论,故不发布实盘业绩数字。
 
+开仓走市价单,因此除手续费、资金费与止损滑点之外,每笔入场还计入一次跨价差成本。本页早前版本引用的数字未含这项入场成本——在 380 天样本上它约值 30 个百分点的总收益,上表已计入。
+
 ### 利润高度集中,这是最该知道的一件事
 
-- 最好的**两个月**合计占全部利润的 **70.3%**,其余 12 个月里有 **4 个月为负**
-- 按标的看是同一形态:贡献最大的单一标的占总利润的 **34.6%**,排名末位的两个为负
+- 最好的**两个月**合计占全部利润的 **65.7%**,其余 12 个月里有 **4 个月为负**
+- 按标的看是同一形态:贡献最大的单一标的占总利润的 **35.6%**,其中 3 个标的为负
 
 收益来自少数强趋势行情,而不是稳定的每日积累。**任何把年化收益线性外推到月度或周度的算法都是错的。**
 
-### 方法:六道门,每道都会拒单
+### 方法:七道门,每道都会拒单
 
 | | 层 | 作用 |
 |---|---|---|
@@ -147,8 +220,32 @@ management, position sizing, technical analysis, quantitative finance.
 | 02 | **突破扳机** | 每个交易时段由历史波幅推出当日固定的买卖轨道,价格**收于**轨道之外才算有效突破 |
 | 03 | **入场时机** | 突破成立后不立即追入,要求价格回落到短周期均线附近的容许带内。带外的突破放弃,而不是以更差价格成交 |
 | 04 | **信号质量** | 趋势确信度、突破深度、回踩精度、量能扩张合成 0–1 的质量分,低于门槛不开仓 |
-| 05 | **事件回避** | 美联储议息等高影响事件公布前的固定窗口内,不开新仓也不加仓 |
-| 06 | **仓位** | 先定止损位置,再由本笔愿意承担的风险反推张数。单笔风险、单仓风险、单标的保证金占比、总敞口四重上限依次裁剪 |
+| 05 | **第二道质量门** | 另一套分数复核第 04 道放行的信号,它由一个较大的因子库先归约成相互独立的簇后构成。该门**只能否决、不能放行**:落在它最弱区间的信号被剔除,该标的随即空出,留给下一根通过全部门的 K 线 |
+| 06 | **事件回避** | 美联储议息等高影响事件公布前的固定窗口内,不开新仓也不加仓 |
+| 07 | **仓位** | 先定止损位置,再由本笔愿意承担的风险反推张数。单笔风险、单仓风险、单标的保证金占比、总敞口四重上限依次裁剪 |
+
+### 第二道质量门,以及它为何只能否决
+
+第 04 道门用信号自身的入场几何形态打分。第 05 道门是在把一个大得多的因子库对照真实盈亏做过测量之后加上的,两个发现决定了它的形态。
+
+**一个大因子库里的大部分因子,是同一个量换了件衣服。** 候选因子中有很大一部分坍缩进同一个高相关簇:在本系统的持仓尺度上,"趋势强度"与"价格伸展"其实是同一个量的两种量法。因此对整个因子库做朴素等权投票,等于把大部分权重交给那一个拥挤的簇。所以因子库先被归约成相互独立的簇,权重按簇分配而不是按因子分配。
+
+**新维度能告诉你该跳过什么,但不能告诉你该拿什么。** 让新分数**替换**原分数的那些设计——即新分数既能否决也能放行——全部更差。逐笔归因给出了原因:这些设计剔掉的交易确实低于平均,但它们换进来的交易价值接近于零。否决有技能,放行没有。因此最终上线的设计只有一种权力:否决第 04 道门放行的信号,永远不能提拔任何信号。
+
+**它改的是入场时点,不是敞口。** 每个标的同时只持一仓,所以被否决并不减少参与度——它让该标的空出来,该标的上下一根通过全部门的 K 线接走这个位置,通常在一小时之内。这也是它与"按固定时钟延迟入场"本质不同的地方,后者单独测过,明显有害。
+
+**它更像回撤过滤器而不是收益放大器。** 收益在最弱的市场状态下提升最大,在最强的状态下基本中性。在上文窗口里,它把最大回撤压低约七个百分点,同时成交笔数略少。
+
+#### 它是怎么被接受的
+
+准入标准在跑之前就定死,不是事后挑的:
+
+- **与同等成交笔数的随机否决对照比**,而不只是与旧配置比。更挑剔本身就能降低回撤,没有这个对照,一个只是少交易的设计会被误认为是交易得更好的设计。
+- **在零重叠窗口上评分**,其中一个窗口因为结果被单笔交易主导而被取消排序资格。
+- **检查集中度** —— 优势主要来自某一笔或某一个标的的设计,被当作假象而不是发现。
+- 不合格的方案被丢弃,而不是回去调参。有几套分数对旧配置看起来不错,但没过随机否决对照而被放弃,其中包括事前最被看好的那一套。
+
+2026-10-16 上线。
 
 ### 工程:策略只是一半
 
